@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hospitalización — Sistema Hospitalario</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo-sq">
+      <svg viewBox="0 0 18 18" fill="none"><rect x="8" y="2" width="2" height="14" rx="1" fill="white"/><rect x="2" y="8" width="14" height="2" rx="1" fill="white"/></svg>
+    </div>
+    <div>
+      <div class="header-title">Sistema Hospitalario</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span id="hdr-user" style="font-size:12px;color:var(--texto-2);"></span>
+    <span id="hdr-badge" class="badge badge-admin">Admin</span>
+    <button class="btn btn-sm" onclick="logout()">Salir</button>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="app-layout">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-section">Servicios</div>
+    <a class="sidebar-item active" href="hospitalizacion.html">
+      <span class="sidebar-dot" style="background:#185FA5;"></span>Hospitalización
+    </a>
+    <a class="sidebar-item" href="urgencias.html">
+      <span class="sidebar-dot" style="background:#E24B4A;"></span>Urgencias
+    </a>
+    <div class="sidebar-section" id="nav-admin-sec">Sistema</div>
+    <a class="sidebar-item" id="nav-admin" href="admin.html">
+      <span class="sidebar-dot" style="background:#854F0B;"></span>Administrador
+    </a>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main">
+
+    <!-- Stats -->
+    <div class="stats-row" id="stats-row">
+      <div class="stat-card"><div class="stat-label">Total camas</div><div class="stat-value" id="st-total">—</div></div>
+      <div class="stat-card"><div class="stat-label">Ocupadas</div><div class="stat-value warn" id="st-ocup">—</div></div>
+      <div class="stat-card"><div class="stat-label">Disponibles</div><div class="stat-value ok" id="st-disp">—</div></div>
+      <div class="stat-card"><div class="stat-label">DEH &gt; 10</div><div class="stat-value danger" id="st-deh">—</div></div>
+      <div class="stat-card"><div class="stat-label">Casos riesgo</div><div class="stat-value danger" id="st-riesgo">—</div></div>
+    </div>
+
+    <!-- Tabla -->
+    <div class="table-container">
+      <div class="table-toolbar">
+        <span class="table-toolbar-title">Camas de hospitalización</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input class="search-input" type="text" id="search" placeholder="Buscar nombre, diagnóstico…" oninput="filterTable()" />
+          <button class="btn btn-sm btn-primary" id="btn-nueva" onclick="openModal(null)" style="display:none;">+ Nueva cama</button>
+        </div>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <colgroup>
+            <col style="width:50px">
+            <col style="width:140px">
+            <col style="width:20px">
+            <col style="width:65px">
+            <col style="width:78px">
+            <col style="width:24px">
+            <col style="width:24px">
+            <col style="width:60px">
+            <col style="width:20px">
+            <col style="width:170px">
+            <col style="width:140px">
+            <col style="width:20px">
+            <col style="width:20px">
+            <col style="width:20px">
+            <col style="width:20px">
+            <col style="width:20px">
+            <col style="width:20px">
+            <col style="width:20px">
+            <col id="col-accion" style="width:50px">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Cama</th>
+              <th>Nombre</th>
+              <th>S</th>
+              <th>Servicio</th>
+              <th>Cédula</th>
+              <th>Tipo</th>
+              <th>Edad</th>
+              <th>Ingreso</th>
+              <th>DEH</th>
+              <th>Diagnóstico</th>
+              <th>Pendientes</th>
+              <th title="Prealerta">Pre</th>
+              <th title="Ventilador">Vent</th>
+              <th title="Aislado">Aisl</th>
+              <th title="Cirugía pendiente">Cir</th>
+              <th title="VPO pendiente">VPO</th>
+              <th title="Material Qx pendiente">Mat</th>
+              <th title="Caso de riesgo">Riesgo</th>
+              <th id="th-accion">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="19"><div class="loading"><div class="spinner"></div> Cargando…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL EDICIÓN / NUEVA CAMA -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Editar cama</div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Número de cama</label>
+        <input type="text" id="m-cama" placeholder="Ej: 5" />
+      </div>
+      <div class="field">
+        <label>Sexo</label>
+        <select id="m-sexo">
+          <option value="M">M</option>
+          <option value="F">F</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Nombre del paciente</label>
+      <input type="text" id="m-nombre" placeholder="Apellido Paterno Materno Nombre" />
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Servicio</label>
+        <select id="m-serv">
+          <option>Nefro</option>
+          <option>TyO</option>
+          <option>Cx. General</option>
+          <option>MI</option>
+          <option>Otro</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Tipo DH</label>
+        <input type="number" id="m-tipo" placeholder="10, 20, 91…" />
+      </div>
+      <div class="field">
+        <label>Edad</label>
+        <input type="number" id="m-edad" placeholder="Años" />
+      </div>
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Cédula</label>
+        <input type="text" id="m-cedula" placeholder="XXXX000000" />
+      </div>
+      <div class="field">
+        <label>GPO y RH</label>
+        <input type="text" id="m-gpo" placeholder="A+" />
+      </div>
+      <div class="field">
+        <label>Fecha ingreso</label>
+        <input type="date" id="m-ingreso" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Diagnóstico</label>
+      <textarea id="m-dx" placeholder="Diagnóstico principal + comorbilidades"></textarea>
+    </div>
+
+    <div class="field">
+      <label>Pendientes</label>
+      <textarea id="m-pend" placeholder="Estudios, procedimientos, medicamentos pendientes" style="min-height:52px;"></textarea>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:6px;">
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
+        <input type="checkbox" id="m-pre" /> Prealerta
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
+        <input type="checkbox" id="m-vent" /> Ventilador
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
+        <input type="checkbox" id="m-aisl" /> Aislado
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
+        <input type="checkbox" id="m-cir" /> Cirugía
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
+        <input type="checkbox" id="m-vpo" /> VPO
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
+        <input type="checkbox" id="m-mat" /> Mat. Qx
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
+        <input type="checkbox" id="m-riesgo" /> Riesgo
+      </label>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-sm btn-primary" onclick="saveModal()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- Scripts -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+<script>
+  let currentUser = null;
+  let allRows     = [];
+  let editingId   = null;
+
+  /* ── INIT ── */
+  (async () => {
+    currentUser = await requireAuth();
+    if (!currentUser) return;
+    renderHeader(currentUser);
+
+    const canEdit = currentUser.rol === 'admin' || currentUser.rol === 'editor';
+    if (canEdit) {
+      document.getElementById('btn-nueva').style.display = '';
+    } else {
+      document.getElementById('th-accion').style.display  = 'none';
+      document.getElementById('col-accion').style.width   = '0';
+    }
+
+    await loadCamas();
+  })();
+
+  /* ── CARGA DESDE SUPABASE ── */
+  async function loadCamas() {
+    const { data, error } = await db
+      .from('camas_hospitalizacion')
+      .select('*')
+      .order('numero_cama', { ascending: true });
+
+    if (error) {
+      showToast('Error al cargar camas: ' + error.message, 'error');
+      return;
+    }
+    allRows = data || [];
+    renderTable(allRows);
+    updateStats(allRows);
+  }
+
+  /* ── STATS ── */
+  function updateStats(rows) {
+    const total   = rows.length;
+    const ocupadas = rows.filter(r => r.nombre_paciente).length;
+    const disp    = total - ocupadas;
+    const deh     = rows.filter(r => r.deh > 10).length;
+    const riesgo  = rows.filter(r => r.caso_riesgo).length;
+    document.getElementById('st-total').textContent  = total;
+    document.getElementById('st-ocup').textContent   = ocupadas;
+    document.getElementById('st-disp').textContent   = disp;
+    document.getElementById('st-deh').textContent    = deh;
+    document.getElementById('st-riesgo').textContent = riesgo;
+  }
+
+  /* ── RENDER ── */
+  function renderTable(rows) {
+    const canEdit = currentUser && (currentUser.rol === 'admin' || currentUser.rol === 'editor');
+    const tbody   = document.getElementById('tbody');
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="19" style="text-align:center;padding:24px;color:var(--texto-3);">Sin registros</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+      const vacio = !r.nombre_paciente;
+      if (vacio) {
+        return `<tr class="row-empty">
+          <td><span class="cama-lbl">C${r.numero_cama}</span></td>
+          <td colspan="17"><span class="empty-cell">— disponible —</span></td>
+          ${canEdit ? `<td><button class="btn btn-sm" onclick="openModal(${JSON.stringify(r).replace(/"/g,'&quot;')})">Asignar</button></td>` : '<td></td>'}
+        </tr>`;
+      }
+
+      const sp  = r.servicio ? `<span class="serv-pill ${servClass(r.servicio)}">${r.servicio}</span>` : '';
+      const deh = r.deh > 10
+        ? `<span class="deh-hi">${r.deh}</span>`
+        : `<span class="deh-lo">${r.deh ?? 0}</span>`;
+      const ing = r.fecha_ingreso ? new Date(r.fecha_ingreso).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '';
+
+      return `<tr>
+        <td><span class="cama-lbl">C${r.numero_cama}</span></td>
+        <td title="${r.nombre_paciente || ''}">${trunc(r.nombre_paciente,20)}</td>
+        <td>${r.sexo || ''}</td>
+        <td>${sp}</td>
+        <td style="font-size:10px;font-family:'IBM Plex Mono',monospace;">${r.cedula || ''}</td>
+        <td>${r.tipo_dh || ''}</td>
+        <td>${r.edad || ''}</td>
+        <td style="font-size:10px;">${ing}</td>
+        <td>${deh}</td>
+        <td title="${r.diagnostico || ''}">${trunc(r.diagnostico,32)}</td>
+        <td title="${r.pendientes || ''}">${trunc(r.pendientes,24)}</td>
+        <td>${chkHtml(r.prealerta)}</td>
+        <td>${chkHtml(r.ventilador)}</td>
+        <td>${chkHtml(r.aislado)}</td>
+        <td>${chkHtml(r.cirugia_pendiente)}</td>
+        <td>${chkHtml(r.vpo_pendiente)}</td>
+        <td>${chkHtml(r.material_qx, true)}</td>
+        <td>${chkHtml(r.caso_riesgo, true)}</td>
+        <td style="display:${canEdit?'':'none'}">
+          ${canEdit ? `<button class="btn btn-sm" onclick='openModal(${JSON.stringify(r).replace(/'/g,"\\'")})'">Editar</button>` : ''}
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  /* ── FILTRO ── */
+  function filterTable() {
+    const q = document.getElementById('search').value.toLowerCase();
+    const filtered = allRows.filter(r =>
+      (r.nombre_paciente || '').toLowerCase().includes(q) ||
+      (r.diagnostico     || '').toLowerCase().includes(q) ||
+      (r.pendientes      || '').toLowerCase().includes(q) ||
+      (r.servicio        || '').toLowerCase().includes(q)
+    );
+    renderTable(filtered);
+  }
+
+  /* ── MODAL ── */
+  function openModal(row) {
+    editingId = row ? row.id : null;
+    document.getElementById('modal-title').textContent = row && row.nombre_paciente ? `Editar cama ${row.numero_cama}` : 'Nueva cama / asignar paciente';
+
+    document.getElementById('m-cama').value   = row ? row.numero_cama : '';
+    document.getElementById('m-sexo').value   = row ? (row.sexo || 'M') : 'M';
+    document.getElementById('m-nombre').value = row ? (row.nombre_paciente || '') : '';
+    document.getElementById('m-serv').value   = row ? (row.servicio || 'Nefro') : 'Nefro';
+    document.getElementById('m-tipo').value   = row ? (row.tipo_dh || '') : '';
+    document.getElementById('m-edad').value   = row ? (row.edad || '') : '';
+    document.getElementById('m-cedula').value = row ? (row.cedula || '') : '';
+    document.getElementById('m-gpo').value    = row ? (row.gpo_rh || '') : '';
+    document.getElementById('m-ingreso').value= row ? (row.fecha_ingreso || '') : '';
+    document.getElementById('m-dx').value     = row ? (row.diagnostico || '') : '';
+    document.getElementById('m-pend').value   = row ? (row.pendientes || '') : '';
+    document.getElementById('m-pre').checked    = !!(row && row.prealerta);
+    document.getElementById('m-vent').checked   = !!(row && row.ventilador);
+    document.getElementById('m-aisl').checked   = !!(row && row.aislado);
+    document.getElementById('m-cir').checked    = !!(row && row.cirugia_pendiente);
+    document.getElementById('m-vpo').checked    = !!(row && row.vpo_pendiente);
+    document.getElementById('m-mat').checked    = !!(row && row.material_qx);
+    document.getElementById('m-riesgo').checked = !!(row && row.caso_riesgo);
+
+    document.getElementById('modal-overlay').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('open');
+    editingId = null;
+  }
+
+  async function saveModal() {
+    const payload = {
+      numero_cama:       document.getElementById('m-cama').value.trim(),
+      sexo:              document.getElementById('m-sexo').value,
+      nombre_paciente:   document.getElementById('m-nombre').value.trim(),
+      servicio:          document.getElementById('m-serv').value,
+      tipo_dh:           parseInt(document.getElementById('m-tipo').value) || null,
+      edad:              parseInt(document.getElementById('m-edad').value) || null,
+      cedula:            document.getElementById('m-cedula').value.trim(),
+      gpo_rh:            document.getElementById('m-gpo').value.trim(),
+      fecha_ingreso:     document.getElementById('m-ingreso').value || null,
+      diagnostico:       document.getElementById('m-dx').value.trim(),
+      pendientes:        document.getElementById('m-pend').value.trim(),
+      prealerta:         document.getElementById('m-pre').checked,
+      ventilador:        document.getElementById('m-vent').checked,
+      aislado:           document.getElementById('m-aisl').checked,
+      cirugia_pendiente: document.getElementById('m-cir').checked,
+      vpo_pendiente:     document.getElementById('m-vpo').checked,
+      material_qx:       document.getElementById('m-mat').checked,
+      caso_riesgo:       document.getElementById('m-riesgo').checked,
+    };
+
+    let error;
+    if (editingId) {
+      ({ error } = await db.from('camas_hospitalizacion').update(payload).eq('id', editingId));
+    } else {
+      ({ error } = await db.from('camas_hospitalizacion').insert(payload));
+    }
+
+    if (error) {
+      showToast('Error al guardar: ' + error.message, 'error');
+    } else {
+      showToast('Guardado correctamente', 'success');
+      closeModal();
+      await loadCamas();
+    }
+  }
+
+  /* Cerrar modal con Escape */
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+  document.getElementById('modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Administrador — Sistema Hospitalario</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <div class="logo-sq">
+      <svg viewBox="0 0 18 18" fill="none"><rect x="8" y="2" width="2" height="14" rx="1" fill="white"/><rect x="2" y="8" width="14" height="2" rx="1" fill="white"/></svg>
+    </div>
+    <div><div class="header-title">Sistema Hospitalario</div></div>
+  </div>
+  <div class="header-right">
+    <span id="hdr-user" style="font-size:12px;color:var(--texto-2);"></span>
+    <span id="hdr-badge" class="badge badge-admin">Admin</span>
+    <button class="btn btn-sm" onclick="logout()">Salir</button>
+  </div>
+</header>
+
+<div class="app-layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Servicios</div>
+    <a class="sidebar-item" href="hospitalizacion.html">
+      <span class="sidebar-dot" style="background:#185FA5;"></span>Hospitalización
+    </a>
+    <a class="sidebar-item" href="urgencias.html">
+      <span class="sidebar-dot" style="background:#E24B4A;"></span>Urgencias
+    </a>
+    <div class="sidebar-section" id="nav-admin-sec">Sistema</div>
+    <a class="sidebar-item active" id="nav-admin" href="admin.html">
+      <span class="sidebar-dot" style="background:#854F0B;"></span>Administrador
+    </a>
+  </nav>
+
+  <main class="main">
+
+    <!-- USUARIOS -->
+    <div style="max-width:700px;">
+      <div class="section-title">Usuarios del sistema</div>
+      <div id="users-list">
+        <div class="loading"><div class="spinner"></div> Cargando usuarios…</div>
+      </div>
+
+      <!-- FORM NUEVO USUARIO -->
+      <div class="add-user-form">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--texto);">Agregar nuevo usuario</div>
+        <div class="field-row">
+          <div class="field"><label>Nombre completo</label><input type="text" id="nu-nombre" placeholder="Dr. Nombre Apellido" /></div>
+          <div class="field"><label>Correo electrónico</label><input type="email" id="nu-email" placeholder="correo@hospital.mx" /></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Contraseña temporal</label><input type="password" id="nu-pass" placeholder="Mínimo 8 caracteres" /></div>
+          <div class="field">
+            <label>Rol</label>
+            <select id="nu-rol">
+              <option value="viewer">Visor — solo lectura</option>
+              <option value="editor">Editor — puede editar camas</option>
+              <option value="admin">Administrador — acceso total</option>
+            </select>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="createUser()">Crear usuario</button>
+      </div>
+
+      <!-- PERMISOS -->
+      <div style="margin-top:28px;">
+        <div class="section-title">Permisos por rol</div>
+        <div class="perm-grid">
+          <div class="perm-card">
+            <h4 style="color:var(--azul);">Administrador</h4>
+            <div class="perm-item"><span class="dot-y"></span>Ver camas hospitalizacion</div>
+            <div class="perm-item"><span class="dot-y"></span>Ver camas urgencias</div>
+            <div class="perm-item"><span class="dot-y"></span>Editar camas</div>
+            <div class="perm-item"><span class="dot-y"></span>Agregar pacientes</div>
+            <div class="perm-item"><span class="dot-y"></span>Gestionar usuarios</div>
+          </div>
+          <div class="perm-card">
+            <h4 style="color:var(--verde);">Editor</h4>
+            <div class="perm-item"><span class="dot-y"></span>Ver camas hospitalizacion</div>
+            <div class="perm-item"><span class="dot-y"></span>Ver camas urgencias</div>
+            <div class="perm-item"><span class="dot-y"></span>Editar camas</div>
+            <div class="perm-item"><span class="dot-y"></span>Agregar pacientes</div>
+            <div class="perm-item"><span class="dot-n"></span>Gestionar usuarios</div>
+          </div>
+          <div class="perm-card">
+            <h4 style="color:var(--gris);">Visor</h4>
+            <div class="perm-item"><span class="dot-y"></span>Ver camas hospitalizacion</div>
+            <div class="perm-item"><span class="dot-y"></span>Ver camas urgencias</div>
+            <div class="perm-item"><span class="dot-n"></span>Editar camas</div>
+            <div class="perm-item"><span class="dot-n"></span>Agregar pacientes</div>
+            <div class="perm-item"><span class="dot-n"></span>Gestionar usuarios</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+<script>
+  let currentUser = null;
+
+  (async () => {
+    currentUser = await requireAuth();
+    if (!currentUser) return;
+    if (currentUser.rol !== 'admin') {
+      alert('No tienes permisos para ver esta página.');
+      window.location.href = 'hospitalizacion.html';
+      return;
+    }
+    renderHeader(currentUser);
+    await loadUsers();
+  })();
+
+  async function loadUsers() {
+    const { data, error } = await db
+      .from('usuarios')
+      .select('*')
+      .order('created_at', { ascending: true });
+
+    if (error) { showToast('Error al cargar usuarios: ' + error.message, 'error'); return; }
+
+    const list = document.getElementById('users-list');
+    if (!data || !data.length) {
+      list.innerHTML = '<p style="color:var(--texto-3);font-size:13px;">Sin usuarios registrados.</p>';
+      return;
+    }
+
+    const badgeCls = { admin: 'badge-admin', editor: 'badge-editor', viewer: 'badge-viewer' };
+    const avCls    = { admin: 'av-admin',    editor: 'av-editor',    viewer: 'av-viewer' };
+    const rolLabel = { admin: 'Administrador', editor: 'Editor', viewer: 'Visor' };
+    const initials = n => n ? n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() : '?';
+
+    list.innerHTML = data.map(u => `
+      <div class="user-card">
+        <div class="user-info">
+          <div class="user-avatar ${avCls[u.rol]||'av-viewer'}">${initials(u.nombre)}</div>
+          <div>
+            <div class="user-name">${u.nombre}</div>
+            <div class="user-email">${u.email}</div>
+          </div>
+        </div>
+        <div class="user-actions">
+          <span class="badge ${badgeCls[u.rol]||'badge-viewer'}">${rolLabel[u.rol]||u.rol}</span>
+          ${u.auth_id !== currentUser.auth_id
+            ? `<button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}','${u.auth_id}')">Eliminar</button>`
+            : '<span style="font-size:11px;color:var(--texto-3);">(tú)</span>'}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function createUser() {
+    const nombre = document.getElementById('nu-nombre').value.trim();
+    const email  = document.getElementById('nu-email').value.trim();
+    const pass   = document.getElementById('nu-pass').value;
+    const rol    = document.getElementById('nu-rol').value;
+
+    if (!nombre || !email || !pass) {
+      showToast('Completa todos los campos', 'error'); return;
+    }
+    if (pass.length < 8) {
+      showToast('La contraseña debe tener al menos 8 caracteres', 'error'); return;
+    }
+
+    /* Crea el usuario en Supabase Auth */
+    const { data: authData, error: authErr } = await db.auth.admin.createUser({
+      email, password: pass, email_confirm: true
+    });
+
+    if (authErr) {
+      showToast('Error al crear usuario: ' + authErr.message, 'error'); return;
+    }
+
+    /* Guarda el perfil en la tabla usuarios */
+    const { error: dbErr } = await db.from('usuarios').insert({
+      auth_id: authData.user.id,
+      nombre, email, rol
+    });
+
+    if (dbErr) {
+      showToast('Usuario creado pero error al guardar perfil: ' + dbErr.message, 'error');
+    } else {
+      showToast('Usuario creado correctamente', 'success');
+      document.getElementById('nu-nombre').value = '';
+      document.getElementById('nu-email').value  = '';
+      document.getElementById('nu-pass').value   = '';
+      await loadUsers();
+    }
+  }
+
+  async function deleteUser(id, authId) {
+    if (!confirm('¿Seguro que deseas eliminar este usuario?')) return;
+
+    await db.auth.admin.deleteUser(authId);
+    const { error } = await db.from('usuarios').delete().eq('id', id);
+
+    if (error) { showToast('Error al eliminar: ' + error.message, 'error'); }
+    else { showToast('Usuario eliminado', 'success'); await loadUsers(); }
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Urgencias — Sistema Hospitalario</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="logo-sq">
+      <svg viewBox="0 0 18 18" fill="none"><rect x="8" y="2" width="2" height="14" rx="1" fill="white"/><rect x="2" y="8" width="14" height="2" rx="1" fill="white"/></svg>
+    </div>
+    <div>
+      <div class="header-title">Sistema Hospitalario</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <span id="hdr-user" style="font-size:12px;color:var(--texto-2);"></span>
+    <span id="hdr-badge" class="badge badge-admin">Admin</span>
+    <button class="btn btn-sm" onclick="logout()">Salir</button>
+  </div>
+</header>
+
+<!-- LAYOUT -->
+<div class="app-layout">
+
+  <nav class="sidebar">
+    <div class="sidebar-section">Servicios</div>
+    <a class="sidebar-item" href="hospitalizacion.html">
+      <span class="sidebar-dot" style="background:#185FA5;"></span>Hospitalización
+    </a>
+    <a class="sidebar-item active" href="urgencias.html">
+      <span class="sidebar-dot" style="background:#E24B4A;"></span>Urgencias
+    </a>
+    <div class="sidebar-section" id="nav-admin-sec">Sistema</div>
+    <a class="sidebar-item" id="nav-admin" href="admin.html">
+      <span class="sidebar-dot" style="background:#854F0B;"></span>Administrador
+    </a>
+  </nav>
+
+  <main class="main">
+
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Total camas</div><div class="stat-value" id="st-total">—</div></div>
+      <div class="stat-card"><div class="stat-label">Ocupadas</div><div class="stat-value warn" id="st-ocup">—</div></div>
+      <div class="stat-card"><div class="stat-label">Disponibles</div><div class="stat-value ok" id="st-disp">—</div></div>
+      <div class="stat-card"><div class="stat-label">Triaje Rojo</div><div class="stat-value danger" id="st-rojo">—</div></div>
+      <div class="stat-card"><div class="stat-label">Triaje Naranja</div><div class="stat-value warn" id="st-naranja">—</div></div>
+    </div>
+
+    <div class="table-container">
+      <div class="table-toolbar">
+        <span class="table-toolbar-title">Camas de urgencias</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <select id="filtro-triaje" onchange="filterTable()" style="padding:6px 10px;border:1px solid var(--gris-borde);border-radius:var(--radio);font-size:12px;background:var(--bg);color:var(--texto);">
+            <option value="">Todos los triajes</option>
+            <option value="Rojo">Rojo</option>
+            <option value="Naranja">Naranja</option>
+            <option value="Amarillo">Amarillo</option>
+            <option value="Verde">Verde</option>
+          </select>
+          <input class="search-input" type="text" id="search" placeholder="Buscar nombre, diagnóstico…" oninput="filterTable()" />
+          <button class="btn btn-sm btn-primary" id="btn-nueva" onclick="openModal(null)" style="display:none;">+ Nueva cama</button>
+        </div>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <colgroup>
+            <col style="width:50px">
+            <col style="width:140px">
+            <col style="width:20px">
+            <col style="width:78px">
+            <col style="width:24px">
+            <col style="width:60px">
+            <col style="width:20px">
+            <col style="width:170px">
+            <col style="width:140px">
+            <col style="width:62px">
+            <col style="width:20px">
+            <col style="width:20px">
+            <col style="width:20px">
+            <col id="col-accion" style="width:50px">
+          </colgroup>
+          <thead>
+            <tr>
+              <th>Cama</th>
+              <th>Nombre</th>
+              <th>S</th>
+              <th>Cédula</th>
+              <th>Edad</th>
+              <th>Ingreso</th>
+              <th>DEH</th>
+              <th>Diagnóstico</th>
+              <th>Pendientes</th>
+              <th>Triaje</th>
+              <th title="Ventilador">Vent</th>
+              <th title="Aislado">Aisl</th>
+              <th title="Caso de riesgo">Riesgo</th>
+              <th id="th-accion">Acción</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="14"><div class="loading"><div class="spinner"></div> Cargando…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Editar cama urgencias</div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Número de cama</label>
+        <input type="text" id="m-cama" placeholder="Ej: U1" />
+      </div>
+      <div class="field">
+        <label>Sexo</label>
+        <select id="m-sexo"><option value="M">M</option><option value="F">F</option></select>
+      </div>
+      <div class="field">
+        <label>Triaje</label>
+        <select id="m-triaje">
+          <option>Rojo</option>
+          <option>Naranja</option>
+          <option>Amarillo</option>
+          <option>Verde</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Nombre del paciente</label>
+      <input type="text" id="m-nombre" placeholder="Apellido Paterno Materno Nombre" />
+    </div>
+
+    <div class="field-row">
+      <div class="field">
+        <label>Cédula</label>
+        <input type="text" id="m-cedula" />
+      </div>
+      <div class="field">
+        <label>Edad</label>
+        <input type="number" id="m-edad" />
+      </div>
+      <div class="field">
+        <label>Fecha ingreso</label>
+        <input type="date" id="m-ingreso" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Diagnóstico</label>
+      <textarea id="m-dx"></textarea>
+    </div>
+
+    <div class="field">
+      <label>Pendientes</label>
+      <textarea id="m-pend" style="min-height:52px;"></textarea>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:6px;">
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
+        <input type="checkbox" id="m-vent" /> Ventilador
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
+        <input type="checkbox" id="m-aisl" /> Aislado
+      </label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;">
+        <input type="checkbox" id="m-riesgo" /> Caso de riesgo
+      </label>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-sm btn-primary" onclick="saveModal()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+<script>
+  let currentUser = null;
+  let allRows     = [];
+  let editingId   = null;
+
+  (async () => {
+    currentUser = await requireAuth();
+    if (!currentUser) return;
+    renderHeader(currentUser);
+
+    const canEdit = currentUser.rol === 'admin' || currentUser.rol === 'editor';
+    if (canEdit) {
+      document.getElementById('btn-nueva').style.display = '';
+    } else {
+      document.getElementById('th-accion').style.display  = 'none';
+      document.getElementById('col-accion').style.width   = '0';
+    }
+    await loadCamas();
+  })();
+
+  async function loadCamas() {
+    const { data, error } = await db
+      .from('camas_urgencias')
+      .select('*')
+      .order('numero_cama', { ascending: true });
+
+    if (error) { showToast('Error: ' + error.message, 'error'); return; }
+    allRows = data || [];
+    renderTable(allRows);
+    updateStats(allRows);
+  }
+
+  function updateStats(rows) {
+    const ocupadas = rows.filter(r => r.nombre_paciente).length;
+    document.getElementById('st-total').textContent   = rows.length;
+    document.getElementById('st-ocup').textContent    = ocupadas;
+    document.getElementById('st-disp').textContent    = rows.length - ocupadas;
+    document.getElementById('st-rojo').textContent    = rows.filter(r => r.triaje === 'Rojo').length;
+    document.getElementById('st-naranja').textContent = rows.filter(r => r.triaje === 'Naranja').length;
+  }
+
+  function renderTable(rows) {
+    const canEdit = currentUser && (currentUser.rol === 'admin' || currentUser.rol === 'editor');
+    const tbody   = document.getElementById('tbody');
+
+    if (!rows.length) {
+      tbody.innerHTML = '<tr><td colspan="14" style="text-align:center;padding:24px;color:var(--texto-3);">Sin registros</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+      const vacio = !r.nombre_paciente;
+      if (vacio) {
+        return `<tr class="row-empty">
+          <td><span class="cama-lbl">${r.numero_cama}</span></td>
+          <td colspan="12"><span class="empty-cell">— disponible —</span></td>
+          ${canEdit ? `<td><button class="btn btn-sm" onclick='openModal(${JSON.stringify(r).replace(/'/g,"\\'")})'>Asignar</button></td>` : '<td></td>'}
+        </tr>`;
+      }
+      const deh = r.deh > 0
+        ? `<span class="deh-hi">${r.deh}</span>`
+        : `<span class="deh-lo">${r.deh ?? 0}</span>`;
+      const ing = r.fecha_ingreso ? new Date(r.fecha_ingreso).toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'2-digit'}) : '';
+      const tc  = triClass(r.triaje);
+
+      return `<tr>
+        <td><span class="cama-lbl">${r.numero_cama}</span></td>
+        <td title="${r.nombre_paciente||''}">${trunc(r.nombre_paciente,20)}</td>
+        <td>${r.sexo||''}</td>
+        <td style="font-size:10px;font-family:'IBM Plex Mono',monospace;">${r.cedula||''}</td>
+        <td>${r.edad||''}</td>
+        <td style="font-size:10px;">${ing}</td>
+        <td>${deh}</td>
+        <td title="${r.diagnostico||''}">${trunc(r.diagnostico,32)}</td>
+        <td title="${r.pendientes||''}">${trunc(r.pendientes,24)}</td>
+        <td><span class="${tc}">${r.triaje||''}</span></td>
+        <td>${chkHtml(r.ventilador)}</td>
+        <td>${chkHtml(r.aislado)}</td>
+        <td>${chkHtml(r.caso_riesgo,true)}</td>
+        <td style="display:${canEdit?'':'none'}">
+          ${canEdit ? `<button class="btn btn-sm" onclick='openModal(${JSON.stringify(r).replace(/'/g,"\\'")})'>Editar</button>` : ''}
+        </td>
+      </tr>`;
+    }).join('');
+  }
+
+  function filterTable() {
+    const q  = document.getElementById('search').value.toLowerCase();
+    const tr = document.getElementById('filtro-triaje').value;
+    const filtered = allRows.filter(r =>
+      (!tr || r.triaje === tr) &&
+      ((r.nombre_paciente||'').toLowerCase().includes(q) ||
+       (r.diagnostico||'').toLowerCase().includes(q) ||
+       (r.pendientes||'').toLowerCase().includes(q))
+    );
+    renderTable(filtered);
+  }
+
+  function openModal(row) {
+    editingId = row ? row.id : null;
+    document.getElementById('modal-title').textContent = row && row.nombre_paciente ? `Editar ${row.numero_cama}` : 'Nueva cama urgencias';
+    document.getElementById('m-cama').value    = row ? row.numero_cama : '';
+    document.getElementById('m-sexo').value    = row ? (row.sexo||'M') : 'M';
+    document.getElementById('m-triaje').value  = row ? (row.triaje||'Verde') : 'Verde';
+    document.getElementById('m-nombre').value  = row ? (row.nombre_paciente||'') : '';
+    document.getElementById('m-cedula').value  = row ? (row.cedula||'') : '';
+    document.getElementById('m-edad').value    = row ? (row.edad||'') : '';
+    document.getElementById('m-ingreso').value = row ? (row.fecha_ingreso||'') : '';
+    document.getElementById('m-dx').value      = row ? (row.diagnostico||'') : '';
+    document.getElementById('m-pend').value    = row ? (row.pendientes||'') : '';
+    document.getElementById('m-vent').checked   = !!(row&&row.ventilador);
+    document.getElementById('m-aisl').checked   = !!(row&&row.aislado);
+    document.getElementById('m-riesgo').checked = !!(row&&row.caso_riesgo);
+    document.getElementById('modal-overlay').classList.add('open');
+  }
+
+  function closeModal() {
+    document.getElementById('modal-overlay').classList.remove('open');
+    editingId = null;
+  }
+
+  async function saveModal() {
+    const payload = {
+      numero_cama:     document.getElementById('m-cama').value.trim(),
+      sexo:            document.getElementById('m-sexo').value,
+      triaje:          document.getElementById('m-triaje').value,
+      nombre_paciente: document.getElementById('m-nombre').value.trim(),
+      cedula:          document.getElementById('m-cedula').value.trim(),
+      edad:            parseInt(document.getElementById('m-edad').value)||null,
+      fecha_ingreso:   document.getElementById('m-ingreso').value||null,
+      diagnostico:     document.getElementById('m-dx').value.trim(),
+      pendientes:      document.getElementById('m-pend').value.trim(),
+      ventilador:      document.getElementById('m-vent').checked,
+      aislado:         document.getElementById('m-aisl').checked,
+      caso_riesgo:     document.getElementById('m-riesgo').checked,
+    };
+
+    let error;
+    if (editingId) {
+      ({ error } = await db.from('camas_urgencias').update(payload).eq('id', editingId));
+    } else {
+      ({ error } = await db.from('camas_urgencias').insert(payload));
+    }
+
+    if (error) { showToast('Error: ' + error.message, 'error'); }
+    else { showToast('Guardado correctamente', 'success'); closeModal(); await loadCamas(); }
+  }
+
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+  document.getElementById('modal-overlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-overlay')) closeModal();
+  });
+</script>
+</body>
+</html>
