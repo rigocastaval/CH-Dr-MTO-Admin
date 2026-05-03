@@ -1,18 +1,10 @@
 /* ================================================================
    supabase.js — Configuración de Supabase
-   
-   INSTRUCCIONES:
-   1. Ve a https://supabase.com y crea un proyecto gratis
-   2. En tu proyecto: Settings → API
-   3. Copia "Project URL" y pégalo en SUPABASE_URL
-   4. Copia "anon public" key y pégalo en SUPABASE_ANON_KEY
    ================================================================ */
 
-const SUPABASE_URL      = 'https://TUPROYECTO.supabase.co';   // ← CAMBIA ESTO
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIs...';          // ← CAMBIA ESTO
+const SUPABASE_URL      = 'https://zvhtkwaftophzzjlgnwd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2aHRrd2FmdG9waHp6amxnbndkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4Mzk0MjAsImV4cCI6MjA5MzQxNTQyMH0.5r3J66MMg2sK5AKJAdSEETDfDxlQrbI0bO10W2dfR3Q';
 
-/* Carga el cliente de Supabase desde CDN.
-   No necesitas instalar nada. */
 const { createClient } = supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -47,7 +39,7 @@ async function logout() {
   window.location.href = 'index.html';
 }
 
-/* ── TOAST (notificación) ── */
+/* ── TOAST ── */
 function showToast(msg, type = '') {
   let t = document.getElementById('toast');
   if (!t) {
@@ -62,7 +54,7 @@ function showToast(msg, type = '') {
   setTimeout(() => t.classList.remove('show'), 3000);
 }
 
-/* ── RENDER HEADER ── */
+/* ── HEADER ── */
 function renderHeader(user) {
   const badgeClass = { admin: 'badge-admin', editor: 'badge-editor', viewer: 'badge-viewer' };
   document.getElementById('hdr-user').textContent  = user.nombre;
