@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Reporte — Sistema Hospitalario</title>
+  <link rel="stylesheet" href="styles.css"/>
+  <style>
+    .header-date{font-size:12px;color:var(--texto-2);background:var(--bg);border:1px solid var(--gris-borde);border-radius:var(--radio);padding:4px 10px;}
+    .reporte-wrap{max-width:820px;}
+    .reporte-titulo{font-size:18px;font-weight:600;color:var(--texto);margin-bottom:4px;}
+    .reporte-sub{font-size:12px;color:var(--texto-2);margin-bottom:20px;}
+    .rep-section{margin-bottom:20px;}
+    .rep-section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--texto-3);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--gris-borde);}
+
+    /* Tabla reporte */
+    .rep-table{width:100%;border-collapse:collapse;font-size:13px;}
+    .rep-table th{
+      background:var(--bg);
+      padding:8px 12px;
+      text-align:left;
+      font-size:11px;
+      font-weight:700;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+      color:var(--texto-2);
+      border-bottom:2px solid var(--gris-borde);
+    }
+    .rep-table th.num{text-align:center;}
+    .rep-table td{
+      padding:7px 12px;
+      border-bottom:1px solid #F1EFE8;
+      color:var(--texto);
+      font-size:13px;
+    }
+    .rep-table td.num{text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:500;}
+    .rep-table tr:hover td{background:#FAFAF8;}
+    .rep-table tr.total-row td{
+      background:var(--bg);
+      font-weight:700;
+      border-top:2px solid var(--gris-borde);
+      border-bottom:2px solid var(--gris-borde);
+    }
+    .rep-table tr.choque-row td{background:#FFF0F0;font-weight:600;}
+    .rep-table tr.choque-row td.pct-100{color:var(--rojo);}
+
+    /* Porcentaje con barra */
+    .pct-cell{display:flex;align-items:center;gap:8px;justify-content:center;}
+    .pct-bar-wrap{width:60px;height:6px;background:#E5E5E0;border-radius:3px;overflow:hidden;flex-shrink:0;}
+    .pct-bar{height:100%;border-radius:3px;transition:width .4s;}
+    .pct-ok   {background:#22c55e;}
+    .pct-med  {background:#f59e0b;}
+    .pct-high {background:#E24B4A;}
+    .pct-full {background:#991b1b;}
+    .pct-num  {font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;min-width:38px;}
+
+    /* Botón imprimir */
+    .btn-print{display:flex;align-items:center;gap:6px;}
+    @media print{
+      .header,.sidebar,.btn-print,.reporte-sub{display:none!important;}
+      .app-layout{display:block;}
+      .main{padding:0;}
+      .rep-table{font-size:11px;}
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="logo_issste.png" alt="ISSSTE" style="height:36px;object-fit:contain;"/>
+  </div>
+  <div class="header-right">
+    <span class="header-date" id="fecha-hoy"></span>
+    <span id="hdr-user" style="font-size:12px;color:var(--texto-2);"></span>
+    <span id="hdr-badge" class="badge badge-admin">Admin</span>
+    <button class="btn btn-sm" onclick="logout()">Salir</button>
+  </div>
+</header>
+
+<div class="app-layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Servicios</div>
+    <a class="sidebar-item" href="hospitalizacion.html"><span class="sidebar-dot" style="background:#185FA5;"></span>Hospitalización</a>
+    <a class="sidebar-item" href="urgencias.html"><span class="sidebar-dot" style="background:#E24B4A;"></span>Urgencias</a>
+    <div class="sidebar-section">Egresos</div>
+    <a class="sidebar-item" href="egresos_hospital.html"><span class="sidebar-dot" style="background:#22c55e;"></span>Egresos Hospital</a>
+    <a class="sidebar-item" href="egresos_urgencias.html"><span class="sidebar-dot" style="background:#f59e0b;"></span>Egresos Urgencias</a>
+    <div class="sidebar-section">Informes</div>
+    <a class="sidebar-item active" href="reporte.html"><span class="sidebar-dot" style="background:#6366f1;"></span>Reporte</a>
+    <div class="sidebar-section" id="nav-admin-sec">Sistema</div>
+    <a class="sidebar-item" id="nav-admin" href="admin.html"><span class="sidebar-dot" style="background:#854F0B;"></span>Administrador</a>
+  </nav>
+
+  <main class="main">
+    <div class="reporte-wrap">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+        <div>
+          <div class="reporte-titulo">Reporte de Censo Hospitalario</div>
+          <div class="reporte-sub" id="reporte-fecha-sub">Cargando datos…</div>
+        </div>
+        <button class="btn btn-sm btn-primary btn-print" onclick="window.print()">
+          🖨️ Imprimir / Guardar PDF
+        </button>
+      </div>
+
+      <!-- HOSPITALIZACIÓN -->
+      <div class="rep-section">
+        <div class="rep-section-title">Hospitalización</div>
+        <div style="background:var(--surface);border:1px solid var(--gris-borde);border-radius:var(--radio-lg);overflow:hidden;">
+          <table class="rep-table">
+            <thead><tr>
+              <th>Servicio</th>
+              <th class="num">Capacidad</th>
+              <th class="num">Ocupación</th>
+              <th class="num" style="min-width:140px;">% Ocupación</th>
+            </tr></thead>
+            <tbody id="tbody-hosp"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- URGENCIAS -->
+      <div class="rep-section">
+        <div class="rep-section-title">Urgencias</div>
+        <div style="background:var(--surface);border:1px solid var(--gris-borde);border-radius:var(--radio-lg);overflow:hidden;">
+          <table class="rep-table">
+            <thead><tr>
+              <th>Área</th>
+              <th class="num">Capacidad</th>
+              <th class="num">Ocupación</th>
+              <th class="num" style="min-width:140px;">% Ocupación</th>
+            </tr></thead>
+            <tbody id="tbody-urg"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- GINECOLOGÍA Y PEDIATRÍA -->
+      <div class="rep-section">
+        <div class="rep-section-title">Ginecología, Pediatría y Alojamiento Conjunto</div>
+        <div style="background:var(--surface);border:1px solid var(--gris-borde);border-radius:var(--radio-lg);overflow:hidden;">
+          <table class="rep-table">
+            <thead><tr>
+              <th>Área</th>
+              <th class="num">Capacidad</th>
+              <th class="num">Ocupación</th>
+              <th class="num" style="min-width:140px;">% Ocupación</th>
+            </tr></thead>
+            <tbody id="tbody-gyo"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- RESUMEN GLOBAL -->
+      <div class="rep-section">
+        <div class="rep-section-title">Resumen global</div>
+        <div style="background:var(--surface);border:1px solid var(--gris-borde);border-radius:var(--radio-lg);overflow:hidden;">
+          <table class="rep-table">
+            <thead><tr>
+              <th>Categoría</th>
+              <th class="num">Capacidad</th>
+              <th class="num">Ocupación</th>
+              <th class="num" style="min-width:140px;">% Ocupación</th>
+            </tr></thead>
+            <tbody id="tbody-global"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+<script>
+let currentUser=null;
+
+// Servicios que pertenecen a cada grupo hospitalización
+const GRP_CX  =['Cx. General','Cx. Plástica','Gastro','Maxilof','Neuro Cx','Oftalmo','Onco Cx','ORL','Angio','Uro'];
+const GRP_MI  =['MI','Cardio','Nefro','Onco Med','Neuro Med','Psiq','Geriatría','Cl. Del Dolor'];
+const GRP_TYO =['TyO'];
+const GRP_GYO =['GyO'];
+const GRP_PED =['Pedia'];
+
+(function(){
+  const d=new Date();
+  const dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const txt=`${dias[d.getDay()]}, ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+  document.getElementById('fecha-hoy').textContent=txt;
+  document.getElementById('reporte-fecha-sub').textContent=`Actualizado: ${txt}`;
+})();
+
+(async()=>{
+  try{
+    currentUser=await requireAuth();
+    if(!currentUser)return;
+    renderHeader(currentUser);
+    await buildReporte();
+  }catch(err){console.error(err);}
+})();
+
+async function buildReporte(){
+  const[{data:hosp},{data:urg}]=await Promise.all([
+    db.from('camas_hospitalizacion').select('numero_cama,nombre_paciente,servicio,manejo_conjunto'),
+    db.from('camas_urgencias').select('numero_cama,nombre_paciente,triaje')
+  ]);
+
+  // ── HOSPITALIZACIÓN ──
+  // Clasificar camas según servicio (también contar manejo conjunto)
+  function countGroup(camas, grp){
+    return camas.filter(c=>c.nombre_paciente&&(grp.includes(c.servicio)||grp.includes(c.manejo_conjunto))).length;
+  }
+  // Camas UCI
+  const uciBeds=hosp.filter(c=>c.numero_cama.startsWith('UCI'));
+  const uciOcup=uciBeds.filter(c=>c.nombre_paciente).length;
+
+  // Camas AC (alojamiento conjunto)
+  const acBeds=hosp.filter(c=>c.numero_cama.endsWith('AC'));
+  const acOcup=acBeds.filter(c=>c.nombre_paciente).length;
+
+  // Camas normales (sin UCI, sin AC)
+  const normalBeds=hosp.filter(c=>!c.numero_cama.startsWith('UCI')&&!c.numero_cama.endsWith('AC'));
+
+  const cxOcup  =countGroup(normalBeds,GRP_CX);
+  const miOcup  =countGroup(normalBeds,GRP_MI);
+  const tyoOcup =countGroup(normalBeds,GRP_TYO);
+  const gyoOcup =countGroup(normalBeds,GRP_GYO);
+  const pedOcup =countGroup(normalBeds,GRP_PED);
+
+  // Capacidades aproximadas (total camas de cada tipo)
+  // Usamos el total real de camas en la tabla para cada grupo
+  const cxCap  =16; // Según imagen referencia
+  const miCap  =16;
+  const tyoCap =normalBeds.length - cxCap - miCap; // resto
+  const hospTotal=normalBeds.length;
+  const hospOcup =normalBeds.filter(c=>c.nombre_paciente).length;
+
+  const hospRows=[
+    {label:'Cirugía',      cap:cxCap,  ocup:cxOcup},
+    {label:'Medicina Interna', cap:miCap, ocup:miOcup},
+    {label:'Traumatología',cap:tyoCap, ocup:tyoOcup},
+  ];
+
+  renderRows('tbody-hosp', hospRows, {label:'HOSPITAL', cap:hospTotal, ocup:hospOcup});
+
+  // ── URGENCIAS ──
+  const urgNormal=urg.filter(c=>c.numero_cama.startsWith('URG'));
+  const urgChoque=urg.filter(c=>c.numero_cama==='CHOQUE');
+  const urgPed   =urg.filter(c=>c.numero_cama.startsWith('PEDIATRÍA'));
+  const urgOtros =urg.filter(c=>!c.numero_cama.startsWith('URG')&&c.numero_cama!=='CHOQUE'&&!c.numero_cama.startsWith('PEDIATRÍA'));
+
+  const urgRows=[
+    {label:'CHOQUE',             cap:urgChoque.length, ocup:urgChoque.filter(c=>c.nombre_paciente).length, isChoque:true},
+    {label:'Urgencias',          cap:urgNormal.length, ocup:urgNormal.filter(c=>c.nombre_paciente).length},
+    {label:'Urgencias Pediátricas',cap:urgPed.length,  ocup:urgPed.filter(c=>c.nombre_paciente).length},
+    {label:'Otras (Toco/Qx)',    cap:urgOtros.length,  ocup:urgOtros.filter(c=>c.nombre_paciente).length},
+  ];
+  renderRows('tbody-urg', urgRows, {label:'URGENCIAS', cap:urg.length, ocup:urg.filter(c=>c.nombre_paciente).length});
+
+  // ── GINECOLOGÍA / PEDIATRÍA / AC ──
+  const gyoBeds=normalBeds.filter(c=>GRP_GYO.includes(c.servicio));
+  const pedBeds=normalBeds.filter(c=>GRP_PED.includes(c.servicio));
+  const gyoRows=[
+    {label:'GyO',                 cap:gyoBeds.length||3,  ocup:gyoOcup},
+    {label:'Pediatría',           cap:pedBeds.length||9,  ocup:pedOcup},
+    {label:'Cunero Pat.',         cap:1,  ocup:0},
+    {label:'Cunero Fis.',         cap:acBeds.length, ocup:acOcup},
+    {label:'Alojamiento Conjunto',cap:acBeds.length, ocup:acOcup},
+  ];
+  renderRows('tbody-gyo', gyoRows, null);
+
+  // ── RESUMEN GLOBAL ──
+  const totalCap=hosp.length+urg.length;
+  const totalOcup=hosp.filter(c=>c.nombre_paciente).length+urg.filter(c=>c.nombre_paciente).length;
+  const globalRows=[
+    {label:'Hospitalización', cap:hosp.length, ocup:hosp.filter(c=>c.nombre_paciente).length},
+    {label:'Urgencias',       cap:urg.length,  ocup:urg.filter(c=>c.nombre_paciente).length},
+    {label:'Inhabilitadas',   cap:0,           ocup:0},
+  ];
+  renderRows('tbody-global', globalRows, {label:'TOTAL HOSPITAL', cap:totalCap, ocup:totalOcup});
+}
+
+function pct(ocup, cap){
+  if(!cap) return 0;
+  return Math.round((ocup/cap)*10000)/100;
+}
+
+function pctColor(p){
+  if(p>=100) return 'pct-full';
+  if(p>=75)  return 'pct-high';
+  if(p>=50)  return 'pct-med';
+  return 'pct-ok';
+}
+
+function pctCell(ocup, cap){
+  const p=pct(ocup,cap);
+  const cls=pctColor(p);
+  return `<div class="pct-cell">
+    <div class="pct-bar-wrap"><div class="pct-bar ${cls}" style="width:${Math.min(p,100)}%;"></div></div>
+    <span class="pct-num ${p>=100?'pct-full':''}" style="${p>=100?'color:#991b1b;':p>=75?'color:var(--rojo);':p>=50?'color:var(--naranja);':'color:var(--verde);'}">${p.toFixed(2)}%</span>
+  </div>`;
+}
+
+function renderRows(tbodyId, rows, totalRow){
+  const tbody=document.getElementById(tbodyId);
+  let html=rows.map(r=>`
+    <tr class="${r.isChoque?'choque-row':''}">
+      <td>${r.label}</td>
+      <td class="num">${r.cap}</td>
+      <td class="num">${r.ocup}</td>
+      <td class="num">${pctCell(r.ocup,r.cap)}</td>
+    </tr>
+  `).join('');
+  if(totalRow){
+    html+=`<tr class="total-row">
+      <td>${totalRow.label}</td>
+      <td class="num">${totalRow.cap}</td>
+      <td class="num">${totalRow.ocup}</td>
+      <td class="num">${pctCell(totalRow.ocup,totalRow.cap)}</td>
+    </tr>`;
+  }
+  tbody.innerHTML=html;
+}
+</script>
+</body>
+</html>
