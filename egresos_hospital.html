@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Egresos Hospital — Sistema Hospitalario</title>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+<header class="header">
+  <div class="header-left">
+    <div class="logo-sq"><svg viewBox="0 0 18 18" fill="none"><rect x="8" y="2" width="2" height="14" rx="1" fill="white"/><rect x="2" y="8" width="14" height="2" rx="1" fill="white"/></svg></div>
+    <div><div class="header-title">Sistema Hospitalario</div></div>
+  </div>
+  <div class="header-right">
+    <span class="header-date" id="fecha-hoy" style="font-size:12px;color:var(--texto-2);background:var(--bg);border:1px solid var(--gris-borde);border-radius:var(--radio);padding:4px 10px;"></span>
+    <span id="hdr-user" style="font-size:12px;color:var(--texto-2);"></span>
+    <span id="hdr-badge" class="badge badge-admin">Admin</span>
+    <button class="btn btn-sm" onclick="logout()">Salir</button>
+  </div>
+</header>
+
+<div class="app-layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Servicios</div>
+    <a class="sidebar-item" href="hospitalizacion.html"><span class="sidebar-dot" style="background:#185FA5;"></span>Hospitalización</a>
+    <a class="sidebar-item" href="urgencias.html"><span class="sidebar-dot" style="background:#E24B4A;"></span>Urgencias</a>
+    <div class="sidebar-section">Egresos</div>
+    <a class="sidebar-item active" href="egresos_hospital.html"><span class="sidebar-dot" style="background:#22c55e;"></span>Egresos Hospital</a>
+    <a class="sidebar-item" href="egresos_urgencias.html"><span class="sidebar-dot" style="background:#f59e0b;"></span>Egresos Urgencias</a>
+    <div class="sidebar-section" id="nav-admin-sec">Sistema</div>
+    <a class="sidebar-item" id="nav-admin" href="admin.html"><span class="sidebar-dot" style="background:#854F0B;"></span>Administrador</a>
+  </nav>
+
+  <main class="main">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Total egresos</div><div class="stat-value" id="st-total">—</div></div>
+      <div class="stat-card"><div class="stat-label">Mejoría</div><div class="stat-value ok" id="st-mejoria">—</div></div>
+      <div class="stat-card"><div class="stat-label">Defunción</div><div class="stat-value danger" id="st-def">—</div></div>
+      <div class="stat-card"><div class="stat-label">Traslado</div><div class="stat-value warn" id="st-tras">—</div></div>
+    </div>
+
+    <div class="table-container">
+      <div class="table-toolbar">
+        <span class="table-toolbar-title">Egresos de Hospitalización</span>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <select id="f-motivo" onchange="applyFilters()" style="padding:6px 10px;border:1px solid var(--gris-borde);border-radius:var(--radio);font-size:12px;background:var(--bg);color:var(--texto);">
+            <option value="">Todos los motivos</option>
+            <option>Mejoría</option>
+            <option>Defunción</option>
+            <option>Traslado a otra unidad</option>
+          </select>
+          <input type="date" id="f-desde" onchange="applyFilters()" style="padding:6px 10px;border:1px solid var(--gris-borde);border-radius:var(--radio);font-size:12px;background:var(--bg);color:var(--texto);" placeholder="Desde"/>
+          <input type="date" id="f-hasta" onchange="applyFilters()" style="padding:6px 10px;border:1px solid var(--gris-borde);border-radius:var(--radio);font-size:12px;background:var(--bg);color:var(--texto);" placeholder="Hasta"/>
+          <input class="search-input" id="search" type="text" placeholder="Buscar nombre…" oninput="applyFilters()"/>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Cama</th><th>Nombre</th><th>S</th><th>Servicio</th>
+            <th>Cédula</th><th>Tipo</th><th>Edad</th>
+            <th>F. Ingreso</th><th>Diagnóstico</th>
+            <th>Motivo Alta</th><th>Fecha Alta</th>
+          </tr></thead>
+          <tbody id="tbody">
+            <tr><td colspan="11"><div class="loading"><div class="spinner"></div> Cargando…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+<script>
+let currentUser=null, allRows=[];
+
+(function(){
+  const d=new Date();
+  const dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  document.getElementById('fecha-hoy').textContent=`${dias[d.getDay()]}, ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+})();
+
+(async()=>{
+  try{
+    currentUser=await requireAuth();
+    if(!currentUser)return;
+    renderHeader(currentUser);
+    await loadEgresos();
+  }catch(err){
+    console.error(err);
+  }
+})();
+
+async function loadEgresos(){
+  const{data,error}=await db.from('egresos_hospital').select('*').order('registrado_en',{ascending:false});
+  if(error){showToast('Error: '+error.message,'error');return;}
+  allRows=data||[];
+  applyFilters();
+  updateStats(allRows);
+}
+
+function updateStats(rows){
+  document.getElementById('st-total').textContent=rows.length;
+  document.getElementById('st-mejoria').textContent=rows.filter(r=>r.motivo_alta==='Mejoría').length;
+  document.getElementById('st-def').textContent=rows.filter(r=>r.motivo_alta==='Defunción').length;
+  document.getElementById('st-tras').textContent=rows.filter(r=>r.motivo_alta==='Traslado a otra unidad').length;
+}
+
+function applyFilters(){
+  const q=(document.getElementById('search').value||'').toLowerCase();
+  const m=document.getElementById('f-motivo').value;
+  const desde=document.getElementById('f-desde').value;
+  const hasta=document.getElementById('f-hasta').value;
+  const filtered=allRows.filter(r=>{
+    if(m&&r.motivo_alta!==m)return false;
+    if(desde&&r.fecha_alta<desde)return false;
+    if(hasta&&r.fecha_alta>hasta)return false;
+    if(q&&!(r.nombre_paciente||'').toLowerCase().includes(q)&&!(r.diagnostico||'').toLowerCase().includes(q))return false;
+    return true;
+  });
+  renderTable(filtered);
+}
+
+const motivoColor={'Mejoría':'color:#22c55e;font-weight:600;','Defunción':'color:#E24B4A;font-weight:600;','Traslado a otra unidad':'color:#854F0B;font-weight:600;'};
+
+function renderTable(rows){
+  const tbody=document.getElementById('tbody');
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:24px;color:var(--texto-3);">Sin egresos registrados</td></tr>';return;}
+  tbody.innerHTML=rows.map(r=>{
+    const ing=r.fecha_ingreso?new Date(r.fecha_ingreso+'T00:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'2-digit'}):'';
+    const alta=r.fecha_alta?new Date(r.fecha_alta+'T00:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'2-digit'}):'';
+    const mc=motivoColor[r.motivo_alta]||'';
+    return `<tr>
+      <td><span class="cama-lbl">${r.numero_cama||''}</span></td>
+      <td style="font-size:11px;">${r.nombre_paciente||''}</td>
+      <td>${r.sexo||''}</td>
+      <td>${r.servicio?`<span class="serv-pill ${servClass(r.servicio)}">${r.servicio}</span>`:''}</td>
+      <td style="font-size:10px;font-family:'IBM Plex Mono',monospace;">${r.cedula||''}</td>
+      <td>${r.tipo_dh||''}</td>
+      <td>${r.edad||''}</td>
+      <td style="font-size:10px;">${ing}</td>
+      <td title="${r.diagnostico||''}" style="font-size:10px;">${trunc(r.diagnostico,40)}</td>
+      <td style="${mc}">${r.motivo_alta||''}</td>
+      <td style="font-size:11px;font-weight:500;">${alta}</td>
+    </tr>`;
+  }).join('');
+}
+</script>
+</body>
+</html>

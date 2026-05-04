@@ -94,6 +94,9 @@
     <div class="sidebar-section">Servicios</div>
     <a class="sidebar-item active" href="hospitalizacion.html"><span class="sidebar-dot" style="background:#185FA5;"></span>Hospitalización</a>
     <a class="sidebar-item" href="urgencias.html"><span class="sidebar-dot" style="background:#E24B4A;"></span>Urgencias</a>
+    <div class="sidebar-section">Egresos</div>
+    <a class="sidebar-item" href="egresos_hospital.html"><span class="sidebar-dot" style="background:#22c55e;"></span>Egresos Hospital</a>
+    <a class="sidebar-item" href="egresos_urgencias.html"><span class="sidebar-dot" style="background:#f59e0b;"></span>Egresos Urgencias</a>
     <div class="sidebar-section" id="nav-admin-sec">Sistema</div>
     <a class="sidebar-item" id="nav-admin" href="admin.html"><span class="sidebar-dot" style="background:#854F0B;"></span>Administrador</a>
   </nav>
@@ -175,6 +178,15 @@
 
 <!-- TOOLTIP HOVER -->
 <div class="tooltip-box" id="tooltip"></div>
+
+<!-- PANEL VISTA PREVIA -->
+<div class="preview-panel" id="preview-panel" style="display:none;position:fixed;right:20px;top:80px;z-index:500;background:var(--surface);border:1px solid var(--gris-borde);border-radius:var(--radio-lg);padding:14px 16px;min-width:280px;max-width:340px;box-shadow:0 4px 20px rgba(0,0,0,.15);font-size:12px;">
+  <div style="font-weight:600;font-size:14px;color:var(--texto);margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--gris-borde);display:flex;justify-content:space-between;align-items:center;">
+    <span id="pv-nombre">—</span>
+    <span style="cursor:pointer;color:var(--texto-3);font-size:16px;" onclick="closePreview()">✕</span>
+  </div>
+  <div id="pv-body"></div>
+</div>
 
 <!-- MODAL EDITAR/ASIGNAR -->
 <div class="modal-overlay" id="modal-overlay">
@@ -298,6 +310,7 @@
 <script src="supabase.js"></script>
 <script>
 let currentUser=null, allRows=[], editingId=null, activeFilter='all', dragSrcId=null;
+let lastClickId=null, clickTimer=null;
 
 const FILTER_MAP={
   mi: ['MI','Cardio','Nefro','Onco Med','Neuro Med','Psiq','Geriatría','Cl. Del Dolor'],
@@ -462,48 +475,56 @@ function renderTable(rows){
   }).join('');
 }
 
-// ── TOOLTIP ──
-function showTooltip(e, encoded){
-  const d=JSON.parse(decodeURIComponent(encoded));
-  const tt=document.getElementById('tooltip');
-  const icons=[
-    d.pre?'✅ Prealerta':'',
-    d.vent?'💨 Ventilador':'',
-    d.aisl?'☢ Aislado':'',
-    d.cir?'🔪 Cirugía':'',
-    d.vpo?'📝 VPO':'',
-    d.mat?'🔩 Mat.Qx':'',
-    d.riesgo?'⚠️ Riesgo':''
-  ].filter(Boolean).join('  ');
+// ── CLIC SIMPLE = VISTA PREVIA / DOBLE CLIC = EDITAR ──
+function handleRowClick(e, id){
+  if(e.target.tagName==='BUTTON'||e.target.closest('button')) return;
+  if(clickTimer && lastClickId===id){
+    clearTimeout(clickTimer); clickTimer=null; lastClickId=null;
+    closePreview();
+    openModalById(id);
+  } else {
+    lastClickId=id;
+    clickTimer=setTimeout(()=>{ clickTimer=null; showPreview(id); }, 280);
+  }
+}
 
-  tt.innerHTML=`
-    <div class="tt-title">${d.nombre||''}</div>
-    <div class="tt-row"><span class="tt-label">Cama:</span>${d.cama}</div>
-    ${d.serv?`<div class="tt-row"><span class="tt-label">Servicio:</span>${d.serv}${d.mc?' / '+d.mc:''}</div>`:''}
-    ${d.cedula?`<div class="tt-row"><span class="tt-label">Cédula:</span>${d.cedula}</div>`:''}
-    ${d.edad?`<div class="tt-row"><span class="tt-label">Edad:</span>${d.edad} años</div>`:''}
-    ${d.ingreso?`<div class="tt-row"><span class="tt-label">Ingreso:</span>${d.ingreso} (DEH: ${d.deh??'—'})</div>`:''}
-    ${d.dx?`<div class="tt-row"><span class="tt-label">Dx:</span><span style="flex:1;">${d.dx}</span></div>`:''}
-    ${d.pend?`<div class="tt-row"><span class="tt-label">Pendientes:</span><span style="flex:1;">${d.pend}</span></div>`:''}
-    ${icons?`<div class="tt-icons">${icons}</div>`:''}
+function showPreview(id){
+  const r=allRows.find(x=>x.id===id);
+  if(!r||!r.nombre_paciente){closePreview();return;}
+  const deh=calcDEH(r.fecha_ingreso);
+  const ing=r.fecha_ingreso?new Date(r.fecha_ingreso+'T00:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'2-digit'}):'';
+  const icons=[
+    r.prealerta?'✅ Prealerta':'', r.ventilador?'💨 Ventilador':'', r.aislado?'☢ Aislado':'',
+    r.cirugia_pendiente?'🔪 Cirugía':'', r.vpo_pendiente?'📝 VPO':'',
+    r.material_qx?'🔩 Mat.Qx':'', r.caso_riesgo?'⚠️ Riesgo':''
+  ].filter(Boolean).join('  ');
+  document.getElementById('pv-nombre').textContent=r.nombre_paciente;
+  document.getElementById('pv-body').innerHTML=`
+    <div style="display:flex;gap:6px;margin-bottom:4px;color:var(--texto-2);"><span style="font-weight:500;color:var(--texto);min-width:78px;">Cama:</span>${r.numero_cama}</div>
+    ${r.servicio?`<div style="display:flex;gap:6px;margin-bottom:4px;color:var(--texto-2);"><span style="font-weight:500;color:var(--texto);min-width:78px;">Servicio:</span>${r.servicio}${r.manejo_conjunto?' / '+r.manejo_conjunto:''}</div>`:''}
+    ${r.cedula?`<div style="display:flex;gap:6px;margin-bottom:4px;color:var(--texto-2);"><span style="font-weight:500;color:var(--texto);min-width:78px;">Cédula:</span>${r.cedula}</div>`:''}
+    ${r.edad?`<div style="display:flex;gap:6px;margin-bottom:4px;color:var(--texto-2);"><span style="font-weight:500;color:var(--texto);min-width:78px;">Edad:</span>${r.edad} años</div>`:''}
+    ${ing?`<div style="display:flex;gap:6px;margin-bottom:4px;color:var(--texto-2);"><span style="font-weight:500;color:var(--texto);min-width:78px;">Ingreso:</span>${ing} (DEH: ${deh??'—'})</div>`:''}
+    ${r.diagnostico?`<div style="display:flex;gap:6px;margin-bottom:4px;color:var(--texto-2);"><span style="font-weight:500;color:var(--texto);min-width:78px;">Dx:</span><span style="flex:1;">${r.diagnostico}</span></div>`:''}
+    ${r.pendientes?`<div style="display:flex;gap:6px;margin-bottom:4px;color:var(--texto-2);"><span style="font-weight:500;color:var(--texto);min-width:78px;">Pendientes:</span><span style="flex:1;">${r.pendientes}</span></div>`:''}
+    ${icons?`<div style="display:flex;gap:6px;margin-top:6px;padding-top:6px;border-top:1px solid var(--gris-borde);flex-wrap:wrap;">${icons}</div>`:''}
+    <div style="margin-top:8px;font-size:10px;color:var(--texto-3);">Doble clic para editar</div>
   `;
-  tt.classList.add('visible');
-  posTooltip(e);
+  document.querySelectorAll('#tbody tr').forEach(tr=>tr.style.background='');
+  const tr=document.querySelector(`#tbody tr[data-id="${id}"]`);
+  if(tr) tr.querySelectorAll('td').forEach(td=>{if(!td.classList.contains('col-cama'))td.style.background='#EEF4FF';});
+  document.getElementById('preview-panel').style.display='block';
 }
-function posTooltip(e){
-  const tt=document.getElementById('tooltip');
-  const x=e.clientX+16, y=e.clientY+10;
-  const w=tt.offsetWidth||300;
-  tt.style.left=(x+w>window.innerWidth?e.clientX-w-10:x)+'px';
-  tt.style.top=(y+200>window.innerHeight?e.clientY-tt.offsetHeight-10:y)+'px';
+
+function closePreview(){
+  document.getElementById('preview-panel').style.display='none';
+  document.querySelectorAll('#tbody tr td').forEach(td=>{if(!td.classList.contains('col-cama')&&!td.closest('tr.uci-row')&&!td.closest('tr.ac-row'))td.style.background='';});
+  lastClickId=null;
 }
-function hideTooltip(){
-  document.getElementById('tooltip').classList.remove('visible');
-}
-document.addEventListener('mousemove',e=>{
-  const tt=document.getElementById('tooltip');
-  if(tt.classList.contains('visible')) posTooltip(e);
-});
+
+// ── TOOLTIP (reemplazado por panel) ──
+function showTooltip(){}
+function hideTooltip(){}
 
 // ── DRAG & DROP ──
 function onDragStart(e){dragSrcId=e.currentTarget.dataset.id;e.currentTarget.classList.add('dragging');e.dataTransfer.effectAllowed='move';}
