@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hospitalización — Sistema Hospitalario</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .filter-bar{display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid var(--gris-borde);flex-wrap:wrap;align-items:center;background:var(--bg);}
+    .filter-bar span{font-size:11px;color:var(--texto-3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-right:4px;}
+    .filter-btn{padding:5px 14px;border-radius:20px;border:1px solid var(--gris-borde);background:var(--surface);font-size:12px;font-weight:500;cursor:pointer;color:var(--texto-2);transition:all .15s;}
+    .filter-btn:hover{border-color:#b4b2a9;}
+    .filter-btn.active{color:#fff;border-color:transparent;}
+    .fb-all{} .fb-all.active{background:var(--azul);}
+    .fb-mi.active{background:#5B5BD6;}
+    .fb-cx.active{background:#E24B4A;}
+    .fb-tyo.active{background:#3B6D11;}
+    .fb-gyo.active{background:#C026D3;}
+    .header-date{font-size:12px;color:var(--texto-2);background:var(--bg);border:1px solid var(--gris-borde);border-radius:var(--radio);padding:4px 10px;}
+    th:first-child,td:first-child{position:sticky;left:0;background:var(--surface);z-index:2;box-shadow:2px 0 4px rgba(0,0,0,.05);}
+    thead th:first-child{background:var(--bg);z-index:3;}
+    .drag-handle{cursor:grab;color:var(--texto-3);font-size:14px;padding:0 4px;user-select:none;display:inline-block;}
+    tr.dragging{opacity:.35;}
+    tr.drag-over td{border-top:2px solid var(--azul) !important;}
+    tr.uci-row td{background:#EEF4FF;}
+    tr.ac-row td{background:#FFFBF0;}
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <div class="logo-sq"><svg viewBox="0 0 18 18" fill="none"><rect x="8" y="2" width="2" height="14" rx="1" fill="white"/><rect x="2" y="8" width="14" height="2" rx="1" fill="white"/></svg></div>
+    <div><div class="header-title">Sistema Hospitalario</div></div>
+  </div>
+  <div class="header-right">
+    <span class="header-date" id="fecha-hoy"></span>
+    <span id="hdr-user" style="font-size:12px;color:var(--texto-2);"></span>
+    <span id="hdr-badge" class="badge badge-admin">Admin</span>
+    <button class="btn btn-sm" onclick="logout()">Salir</button>
+  </div>
+</header>
+
+<div class="app-layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Servicios</div>
+    <a class="sidebar-item active" href="hospitalizacion.html"><span class="sidebar-dot" style="background:#185FA5;"></span>Hospitalización</a>
+    <a class="sidebar-item" href="urgencias.html"><span class="sidebar-dot" style="background:#E24B4A;"></span>Urgencias</a>
+    <div class="sidebar-section" id="nav-admin-sec">Sistema</div>
+    <a class="sidebar-item" id="nav-admin" href="admin.html"><span class="sidebar-dot" style="background:#854F0B;"></span>Administrador</a>
+  </nav>
+
+  <main class="main">
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Total camas</div><div class="stat-value" id="st-total">—</div></div>
+      <div class="stat-card"><div class="stat-label">Ocupadas</div><div class="stat-value warn" id="st-ocup">—</div></div>
+      <div class="stat-card"><div class="stat-label">Disponibles</div><div class="stat-value ok" id="st-disp">—</div></div>
+      <div class="stat-card"><div class="stat-label">DEH &gt; 10</div><div class="stat-value danger" id="st-deh">—</div></div>
+      <div class="stat-card"><div class="stat-label">Casos riesgo</div><div class="stat-value danger" id="st-riesgo">—</div></div>
+    </div>
+
+    <div class="table-container">
+      <div class="filter-bar">
+        <span>Filtrar:</span>
+        <button class="filter-btn fb-all active" onclick="setFilter('all',this)">Todos</button>
+        <button class="filter-btn fb-mi"  onclick="setFilter('mi',this)">Medicina Interna</button>
+        <button class="filter-btn fb-cx"  onclick="setFilter('cx',this)">Cirugía</button>
+        <button class="filter-btn fb-tyo" onclick="setFilter('tyo',this)">Traumatología</button>
+        <button class="filter-btn fb-gyo" onclick="setFilter('gyo',this)">Ginecología y Pediatría</button>
+      </div>
+
+      <div class="table-toolbar">
+        <span class="table-toolbar-title">Camas de hospitalización</span>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <input class="search-input" id="search" type="text" placeholder="Buscar nombre, diagnóstico…" oninput="applyFilters()" />
+        </div>
+      </div>
+
+      <div class="tbl-wrap">
+        <table>
+          <colgroup>
+            <col style="width:22px">
+            <col style="width:62px">
+            <col style="width:148px">
+            <col style="width:18px">
+            <col style="width:68px">
+            <col style="width:68px">
+            <col style="width:76px">
+            <col style="width:28px">
+            <col style="width:28px">
+            <col style="width:66px">
+            <col style="width:26px">
+            <col style="width:180px">
+            <col style="width:148px">
+            <col style="width:48px">
+            <col style="width:18px">
+            <col style="width:18px">
+            <col style="width:18px">
+            <col style="width:18px">
+            <col style="width:18px">
+            <col style="width:18px">
+            <col style="width:18px">
+            <col id="col-accion" style="width:50px">
+          </colgroup>
+          <thead><tr>
+            <th></th>
+            <th>Cama</th><th>Nombre</th><th>S</th>
+            <th>Servicio</th><th>Man. Conj.</th>
+            <th>Cédula</th><th>Tipo</th><th>Edad</th>
+            <th>Ingreso</th><th>DEH</th>
+            <th>Diagnóstico</th><th>Pendientes</th><th>GPO/RH</th>
+            <th title="Prealerta">Pre</th><th title="Ventilador">Vent</th>
+            <th title="Aislado">Aisl</th><th title="Cirugía">Cir</th>
+            <th title="VPO">VPO</th><th title="Material Qx">Mat</th>
+            <th title="Riesgo">Riesgo</th>
+            <th id="th-accion">Acción</th>
+          </tr></thead>
+          <tbody id="tbody">
+            <tr><td colspan="22"><div class="loading"><div class="spinner"></div> Cargando…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <div class="modal-title" id="modal-title">Editar cama</div>
+    <div class="field-row">
+      <div class="field" style="flex:0 0 110px;">
+        <label>Cama</label>
+        <input type="text" id="m-cama" readonly style="background:var(--bg);color:var(--texto-3);" />
+      </div>
+      <div class="field" style="flex:0 0 70px;">
+        <label>Sexo</label>
+        <select id="m-sexo"><option value="M">M</option><option value="F">F</option></select>
+      </div>
+      <div class="field">
+        <label>Tipo DH</label>
+        <select id="m-tipo">
+          <option value="">—</option>
+          <option>10</option><option>20</option><option>30</option><option>31</option>
+          <option>40</option><option>41</option><option>50</option><option>51</option>
+          <option>60</option><option>61</option><option>70</option><option>71</option>
+          <option>80</option><option>81</option><option>90</option><option>91</option>
+        </select>
+      </div>
+      <div class="field" style="flex:0 0 70px;">
+        <label>Edad</label>
+        <input type="number" id="m-edad" min="0" max="120" />
+      </div>
+    </div>
+    <div class="field">
+      <label>Nombre del paciente</label>
+      <input type="text" id="m-nombre" placeholder="Apellido Paterno Materno Nombre" />
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label>Servicio</label>
+        <select id="m-serv">
+          <option value="">— Sin servicio —</option>
+          <option>Angio</option><option>Cardio</option><option>Cl. Del Dolor</option>
+          <option>Cx. General</option><option>Cx. Plástica</option><option>Gastro</option>
+          <option>Geriatría</option><option>GyO</option><option>Maxilof</option>
+          <option>MI</option><option>Nefro</option><option>Neuro Cx</option>
+          <option>Neuro Med</option><option>Oftalmo</option><option>Onco Cx</option>
+          <option>Onco Med</option><option>ORL</option><option>Pedia</option>
+          <option>Psiq</option><option>TyO</option><option>Urgen</option><option>Uro</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Manejo Conjunto</label>
+        <select id="m-manejo">
+          <option value="">— Ninguno —</option>
+          <option>Angio</option><option>Cardio</option><option>Cl. Del Dolor</option>
+          <option>Cx. General</option><option>Cx. Plástica</option><option>Gastro</option>
+          <option>Geriatría</option><option>GyO</option><option>Maxilof</option>
+          <option>MI</option><option>Nefro</option><option>Neuro Cx</option>
+          <option>Neuro Med</option><option>Oftalmo</option><option>Onco Cx</option>
+          <option>Onco Med</option><option>ORL</option><option>Pedia</option>
+          <option>Psiq</option><option>TyO</option><option>Urgen</option><option>Uro</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Cédula</label><input type="text" id="m-cedula" placeholder="XXXX000000" /></div>
+      <div class="field"><label>GPO y RH</label><input type="text" id="m-gpo" placeholder="A+" /></div>
+      <div class="field"><label>Fecha ingreso</label><input type="date" id="m-ingreso" /></div>
+    </div>
+    <div class="field"><label>Diagnóstico</label><textarea id="m-dx" placeholder="Diagnóstico principal + comorbilidades"></textarea></div>
+    <div class="field"><label>Pendientes</label><textarea id="m-pend" style="min-height:52px;" placeholder="Estudios, procedimientos, medicamentos pendientes"></textarea></div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;">
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-pre" /> Prealerta</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-vent" /> Ventilador</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-aisl" /> Aislado</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-cir" /> Cirugía</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-vpo" /> VPO</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-mat" /> Mat. Qx</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-riesgo" /> Riesgo</label>
+    </div>
+    <div id="btn-limpiar-wrap" style="margin-bottom:10px;display:none;">
+      <button class="btn btn-sm btn-danger" onclick="limpiarCama()">Dar de alta / liberar cama</button>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-sm btn-primary" onclick="saveModal()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+<script>
+let currentUser=null, allRows=[], editingId=null, activeFilter='all', dragSrcId=null;
+
+const FILTER_MAP={
+  mi: ['MI','Cardio','Nefro','Onco Med','Neuro Med','Psiq','Geriatría','Cl. Del Dolor'],
+  cx: ['Cx. General','Cx. Plástica','Gastro','Maxilof','Neuro Cx','Oftalmo','Onco Cx','ORL','Angio','Uro'],
+  tyo:['TyO'],
+  gyo:['GyO','Pedia']
+};
+
+// Fecha hoy
+(function(){
+  const d=new Date();
+  const dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  document.getElementById('fecha-hoy').textContent=`${dias[d.getDay()]}, ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+})();
+
+function calcDEH(fi){
+  if(!fi) return null;
+  const hoy=new Date(); hoy.setHours(0,0,0,0);
+  const ing=new Date(fi+'T00:00:00');
+  const d=Math.floor((hoy-ing)/86400000);
+  return d>=0?d:0;
+}
+
+(async()=>{
+  try {
+    currentUser=await requireAuth();
+    if(!currentUser)return;
+    renderHeader(currentUser);
+    const canEdit=currentUser.rol==='admin'||currentUser.rol==='editor';
+    if(!canEdit){
+      document.getElementById('th-accion').style.display='none';
+      document.getElementById('col-accion').style.width='0';
+    }
+    await loadCamas();
+  } catch(err) {
+    console.error('Error de inicialización:', err);
+    const tbody=document.getElementById('tbody');
+    if(tbody) tbody.innerHTML='<tr><td colspan="22" style="text-align:center;padding:2rem;color:#c00">Error al iniciar. Recarga la página o vuelve a iniciar sesión.</td></tr>';
+  }
+})();
+
+async function loadCamas(){
+  const{data,error}=await db.from('camas_hospitalizacion').select('*').order('sort_order',{ascending:true});
+  if(error){
+    showToast('Error: '+error.message,'error');
+    const tbody=document.getElementById('tbody');
+    if(tbody) tbody.innerHTML='<tr><td colspan="22" style="text-align:center;padding:2rem;color:#c00">No se pudieron cargar los datos. Recarga la página.</td></tr>';
+    return;
+  }
+  allRows=data||[];
+  applyFilters();
+  updateStats(allRows);
+}
+
+function updateStats(rows){
+  const ocp=rows.filter(r=>r.nombre_paciente).length;
+  const deh=rows.filter(r=>calcDEH(r.fecha_ingreso)>10).length;
+  document.getElementById('st-total').textContent=rows.length;
+  document.getElementById('st-ocup').textContent=ocp;
+  document.getElementById('st-disp').textContent=rows.length-ocp;
+  document.getElementById('st-deh').textContent=deh;
+  document.getElementById('st-riesgo').textContent=rows.filter(r=>r.caso_riesgo).length;
+}
+
+function setFilter(f,btn){
+  activeFilter=f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  applyFilters();
+}
+
+function rowMatch(r,f){
+  if(f==='all')return true;
+  if(!r.nombre_paciente)return false;
+  const svs=FILTER_MAP[f]||[];
+  return svs.includes(r.servicio)||svs.includes(r.manejo_conjunto);
+}
+
+function applyFilters(){
+  const q=(document.getElementById('search').value||'').toLowerCase();
+  const filtered=allRows.filter(r=>rowMatch(r,activeFilter)&&(!q||(r.nombre_paciente||'').toLowerCase().includes(q)||(r.diagnostico||'').toLowerCase().includes(q)||(r.pendientes||'').toLowerCase().includes(q)||(r.servicio||'').toLowerCase().includes(q)));
+  renderTable(filtered);
+}
+
+function renderTable(rows){
+  const canEdit=currentUser&&(currentUser.rol==='admin'||currentUser.rol==='editor');
+  const tbody=document.getElementById('tbody');
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="22" style="text-align:center;padding:24px;color:var(--texto-3);">Sin registros</td></tr>';return;}
+
+  tbody.innerHTML=rows.map(r=>{
+    const vacio=!r.nombre_paciente;
+    const isUCI=r.numero_cama.startsWith('UCI');
+    const isAC=r.numero_cama.endsWith('AC');
+    const rc=isUCI?'uci-row':isAC?'ac-row':'';
+    const deh=calcDEH(r.fecha_ingreso);
+    const dehH=deh===null?'':deh>10?`<span class="deh-hi">${deh}</span>`:`<span class="deh-lo">${deh}</span>`;
+    const ing=r.fecha_ingreso?new Date(r.fecha_ingreso+'T00:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'2-digit'}):'';
+    const sp=r.servicio?`<span class="serv-pill ${servClass(r.servicio)}">${r.servicio}</span>`:'';
+    const mc=r.manejo_conjunto?`<span class="serv-pill ${servClass(r.manejo_conjunto)}">${r.manejo_conjunto}</span>`:'';
+    if(vacio){
+      return `<tr class="${rc}" data-id="${r.id}" data-cama="${r.numero_cama}" ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragleave="onDragLeave(event)">
+        <td></td>
+        <td><span class="cama-lbl">${r.numero_cama}</span></td>
+        <td colspan="19"><span class="empty-cell">— disponible —</span></td>
+        <td style="display:${canEdit?'':'none'}">${canEdit?`<button class="btn btn-sm" onclick="openModalById('${r.id}')">Asignar</button>`:''}</td>
+      </tr>`;
+    }
+    return `<tr class="${rc}" draggable="${canEdit}" data-id="${r.id}" data-cama="${r.numero_cama}"
+      ondragstart="onDragStart(event)" ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragleave="onDragLeave(event)">
+      <td><span class="drag-handle" title="Arrastrar para cambiar de cama">⠿</span></td>
+      <td><span class="cama-lbl">${r.numero_cama}</span></td>
+      <td title="${r.nombre_paciente||''}" style="font-size:11px;">${trunc(r.nombre_paciente,22)}</td>
+      <td>${r.sexo||''}</td>
+      <td>${sp}</td><td>${mc}</td>
+      <td style="font-size:10px;font-family:'IBM Plex Mono',monospace;">${r.cedula||''}</td>
+      <td>${r.tipo_dh||''}</td><td>${r.edad||''}</td>
+      <td style="font-size:10px;">${ing}</td>
+      <td>${dehH}</td>
+      <td title="${r.diagnostico||''}" style="font-size:10px;">${trunc(r.diagnostico,35)}</td>
+      <td title="${r.pendientes||''}" style="font-size:10px;">${trunc(r.pendientes,28)}</td>
+      <td style="font-size:10px;">${r.gpo_rh||''}</td>
+      <td>${chkHtml(r.prealerta)}</td><td>${chkHtml(r.ventilador)}</td>
+      <td>${chkHtml(r.aislado)}</td><td>${chkHtml(r.cirugia_pendiente)}</td>
+      <td>${chkHtml(r.vpo_pendiente)}</td><td>${chkHtml(r.material_qx,true)}</td>
+      <td>${chkHtml(r.caso_riesgo,true)}</td>
+      <td style="display:${canEdit?'':'none'}">${canEdit?`<button class="btn btn-sm" onclick="openModalById('${r.id}')">Editar</button>`:''}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Drag & drop
+function onDragStart(e){dragSrcId=e.currentTarget.dataset.id;e.currentTarget.classList.add('dragging');e.dataTransfer.effectAllowed='move';}
+function onDragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
+function onDragLeave(e){e.currentTarget.classList.remove('drag-over');}
+async function onDrop(e){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  const destId=e.currentTarget.dataset.id;
+  const destCama=e.currentTarget.dataset.cama;
+  if(!dragSrcId||dragSrcId===destId)return;
+  const src=allRows.find(r=>r.id===dragSrcId);
+  const dest=allRows.find(r=>r.id===destId);
+  if(!src)return;
+  const campos=['nombre_paciente','sexo','servicio','manejo_conjunto','cedula','tipo_dh','gpo_rh','edad','fecha_ingreso','diagnostico','pendientes','prealerta','ventilador','aislado','cirugia_pendiente','vpo_pendiente','material_qx','caso_riesgo'];
+  const bools=['prealerta','ventilador','aislado','cirugia_pendiente','vpo_pendiente','material_qx','caso_riesgo'];
+  const srcData={},destData={};
+  campos.forEach(c=>{srcData[c]=dest?dest[c]:null;destData[c]=src[c];});
+  bools.forEach(c=>{if(!srcData[c])srcData[c]=false;if(!destData[c])destData[c]=false;});
+  await db.from('camas_hospitalizacion').update(srcData).eq('id',dragSrcId);
+  await db.from('camas_hospitalizacion').update(destData).eq('id',destId);
+  showToast(`Paciente movido a cama ${destCama}`,'success');
+  dragSrcId=null;
+  await loadCamas();
+}
+
+function openModalById(id){const r=allRows.find(x=>x.id===id);if(r)openModal(r);}
+
+function openModal(row){
+  editingId=row?row.id:null;
+  const tp=row&&row.nombre_paciente;
+  document.getElementById('modal-title').textContent=tp?`Editar — Cama ${row.numero_cama}`:`Asignar — Cama ${row?row.numero_cama:''}`;
+  document.getElementById('m-cama').value=row?row.numero_cama:'';
+  document.getElementById('m-sexo').value=row?(row.sexo||'M'):'M';
+  document.getElementById('m-nombre').value=row?(row.nombre_paciente||''):'';
+
+  document.getElementById('m-serv').value=row?(row.servicio||''):'';
+  document.getElementById('m-manejo').value=row?(row.manejo_conjunto||''):'';
+  document.getElementById('m-tipo').value=row?(row.tipo_dh||''):'';
+  document.getElementById('m-edad').value=row?(row.edad||''):'';
+  document.getElementById('m-cedula').value=row?(row.cedula||''):'';
+  document.getElementById('m-gpo').value=row?(row.gpo_rh||''):'';
+  document.getElementById('m-ingreso').value=row?(row.fecha_ingreso||''):'';
+  document.getElementById('m-dx').value=row?(row.diagnostico||''):'';
+  document.getElementById('m-pend').value=row?(row.pendientes||''):'';
+  document.getElementById('m-pre').checked=!!(row&&row.prealerta);
+  document.getElementById('m-vent').checked=!!(row&&row.ventilador);
+  document.getElementById('m-aisl').checked=!!(row&&row.aislado);
+  document.getElementById('m-cir').checked=!!(row&&row.cirugia_pendiente);
+  document.getElementById('m-vpo').checked=!!(row&&row.vpo_pendiente);
+  document.getElementById('m-mat').checked=!!(row&&row.material_qx);
+  document.getElementById('m-riesgo').checked=!!(row&&row.caso_riesgo);
+  document.getElementById('btn-limpiar-wrap').style.display=tp?'':'none';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');editingId=null;}
+
+async function limpiarCama(){
+  if(!confirm('¿Confirmas dar de alta al paciente y liberar esta cama?'))return;
+  const p={nombre_paciente:null,sexo:null,servicio:null,manejo_conjunto:null,cedula:null,tipo_dh:null,gpo_rh:null,edad:null,fecha_ingreso:null,diagnostico:null,pendientes:null,prealerta:false,ventilador:false,aislado:false,cirugia_pendiente:false,vpo_pendiente:false,material_qx:false,caso_riesgo:false};
+  const{error}=await db.from('camas_hospitalizacion').update(p).eq('id',editingId);
+  if(error)showToast('Error: '+error.message,'error');
+  else{showToast('Cama liberada','success');closeModal();await loadCamas();}
+}
+
+async function saveModal(){
+  const p={
+    sexo:document.getElementById('m-sexo').value,
+    nombre_paciente:document.getElementById('m-nombre').value.trim()||null,
+    servicio:document.getElementById('m-serv').value||null,
+    manejo_conjunto:document.getElementById('m-manejo').value||null,
+    tipo_dh:document.getElementById('m-tipo').value||null,
+    edad:parseInt(document.getElementById('m-edad').value)||null,
+    cedula:document.getElementById('m-cedula').value.trim()||null,
+    gpo_rh:document.getElementById('m-gpo').value.trim()||null,
+    fecha_ingreso:document.getElementById('m-ingreso').value||null,
+    diagnostico:document.getElementById('m-dx').value.trim()||null,
+    pendientes:document.getElementById('m-pend').value.trim()||null,
+    prealerta:document.getElementById('m-pre').checked,
+    ventilador:document.getElementById('m-vent').checked,
+    aislado:document.getElementById('m-aisl').checked,
+    cirugia_pendiente:document.getElementById('m-cir').checked,
+    vpo_pendiente:document.getElementById('m-vpo').checked,
+    material_qx:document.getElementById('m-mat').checked,
+    caso_riesgo:document.getElementById('m-riesgo').checked,
+  };
+  const{error}=await db.from('camas_hospitalizacion').update(p).eq('id',editingId);
+  if(error)showToast('Error: '+error.message,'error');
+  else{showToast('Guardado','success');closeModal();await loadCamas();}
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
+</script>
+</body>
+</html>
