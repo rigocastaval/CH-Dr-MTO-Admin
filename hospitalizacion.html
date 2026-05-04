@@ -1,29 +1,77 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Hospitalización — Sistema Hospitalario</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css"/>
   <style>
     .filter-bar{display:flex;gap:6px;padding:10px 14px;border-bottom:1px solid var(--gris-borde);flex-wrap:wrap;align-items:center;background:var(--bg);}
     .filter-bar span{font-size:11px;color:var(--texto-3);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-right:4px;}
     .filter-btn{padding:5px 14px;border-radius:20px;border:1px solid var(--gris-borde);background:var(--surface);font-size:12px;font-weight:500;cursor:pointer;color:var(--texto-2);transition:all .15s;}
     .filter-btn:hover{border-color:#b4b2a9;}
     .filter-btn.active{color:#fff;border-color:transparent;}
-    .fb-all{} .fb-all.active{background:var(--azul);}
+    .fb-all.active{background:var(--azul);}
     .fb-mi.active{background:#5B5BD6;}
     .fb-cx.active{background:#E24B4A;}
     .fb-tyo.active{background:#3B6D11;}
     .fb-gyo.active{background:#C026D3;}
     .header-date{font-size:12px;color:var(--texto-2);background:var(--bg);border:1px solid var(--gris-borde);border-radius:var(--radio);padding:4px 10px;}
-    th:first-child,td:first-child{position:sticky;left:0;background:var(--surface);z-index:2;box-shadow:2px 0 4px rgba(0,0,0,.05);}
-    thead th:first-child{background:var(--bg);z-index:3;}
+
+    /* Columna cama FIJA */
+    td.col-cama, th.col-cama {
+      position:sticky;left:0;z-index:2;
+      background:var(--surface);
+      box-shadow:2px 0 4px rgba(0,0,0,.07);
+    }
+    thead th.col-cama{background:var(--bg);z-index:3;}
+    tr.uci-row td{background:#EEF4FF;}
+    tr.uci-row td.col-cama{background:#EEF4FF;}
+    tr.ac-row td{background:#FFFBF0;}
+    tr.ac-row td.col-cama{background:#FFFBF0;}
+
     .drag-handle{cursor:grab;color:var(--texto-3);font-size:14px;padding:0 4px;user-select:none;display:inline-block;}
     tr.dragging{opacity:.35;}
-    tr.drag-over td{border-top:2px solid var(--azul) !important;}
-    tr.uci-row td{background:#EEF4FF;}
-    tr.ac-row td{background:#FFFBF0;}
+    tr.drag-over td{border-top:2px solid var(--azul)!important;}
+
+    /* Iconos check */
+    .ico{font-size:14px;display:inline-block;line-height:1;}
+    .ico-pre  {color:#22c55e;}   /* ✅ verde */
+    .ico-vent {color:#3b82f6;}   /* 💨 azul */
+    .ico-aisl {color:#f59e0b;}   /* ☢ amarillo */
+    .ico-cir  {color:#6366f1;}   /* 🔪 morado */
+    .ico-vpo  {color:#0ea5e9;}   /* 📝 azul */
+    .ico-mat  {color:#78716c;}   /* 🔩 gris */
+    .ico-riesgo{color:#f59e0b;}  /* ⚠️ amarillo */
+
+    /* Tooltip hover */
+    tr.has-patient{cursor:pointer;}
+    .tooltip-box{
+      display:none;
+      position:fixed;
+      z-index:999;
+      background:var(--surface);
+      border:1px solid var(--gris-borde);
+      border-radius:var(--radio-lg);
+      padding:12px 14px;
+      min-width:280px;max-width:360px;
+      box-shadow:0 4px 16px rgba(0,0,0,.15);
+      font-size:12px;
+      pointer-events:none;
+    }
+    .tooltip-box.visible{display:block;}
+    .tt-title{font-weight:600;font-size:13px;color:var(--texto);margin-bottom:6px;}
+    .tt-row{display:flex;gap:6px;margin-bottom:3px;color:var(--texto-2);}
+    .tt-label{font-weight:500;color:var(--texto);min-width:80px;flex-shrink:0;}
+    .tt-icons{display:flex;gap:6px;margin-top:4px;padding-top:4px;border-top:1px solid var(--gris-borde);}
+
+    /* Modal alta */
+    .alta-opts{display:flex;flex-direction:column;gap:8px;margin:12px 0;}
+    .alta-btn{padding:10px 14px;border:1px solid var(--gris-borde);border-radius:var(--radio);background:var(--surface);font-size:13px;font-weight:500;cursor:pointer;text-align:left;transition:background .15s;}
+    .alta-btn:hover{background:var(--bg);}
+    .alta-btn.mejoria{border-left:4px solid #22c55e;}
+    .alta-btn.defuncion{border-left:4px solid var(--rojo);}
+    .alta-btn.traslado{border-left:4px solid var(--azul);}
   </style>
 </head>
 <body>
@@ -68,51 +116,52 @@
         <button class="filter-btn fb-tyo" onclick="setFilter('tyo',this)">Traumatología</button>
         <button class="filter-btn fb-gyo" onclick="setFilter('gyo',this)">Ginecología y Pediatría</button>
       </div>
-
       <div class="table-toolbar">
         <span class="table-toolbar-title">Camas de hospitalización</span>
-        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-          <input class="search-input" id="search" type="text" placeholder="Buscar nombre, diagnóstico…" oninput="applyFilters()" />
-        </div>
+        <input class="search-input" id="search" type="text" placeholder="Buscar nombre, diagnóstico…" oninput="applyFilters()"/>
       </div>
-
       <div class="tbl-wrap">
         <table>
           <colgroup>
             <col style="width:22px">
-            <col style="width:62px">
-            <col style="width:148px">
+            <col style="width:64px"><!-- CAMA FIJA -->
+            <col style="width:150px">
             <col style="width:18px">
             <col style="width:68px">
             <col style="width:68px">
             <col style="width:76px">
             <col style="width:28px">
             <col style="width:28px">
-            <col style="width:66px">
-            <col style="width:26px">
+            <col style="width:68px">
+            <col style="width:36px"><!-- DEH MÁS ANCHO -->
             <col style="width:180px">
-            <col style="width:148px">
+            <col style="width:150px">
             <col style="width:48px">
-            <col style="width:18px">
-            <col style="width:18px">
-            <col style="width:18px">
-            <col style="width:18px">
-            <col style="width:18px">
-            <col style="width:18px">
-            <col style="width:18px">
-            <col id="col-accion" style="width:50px">
+            <col style="width:22px">
+            <col style="width:22px">
+            <col style="width:22px">
+            <col style="width:22px">
+            <col style="width:22px">
+            <col style="width:22px">
+            <col style="width:22px">
+            <col id="col-accion" style="width:90px">
           </colgroup>
           <thead><tr>
             <th></th>
-            <th>Cama</th><th>Nombre</th><th>S</th>
+            <th class="col-cama">Cama</th>
+            <th>Nombre</th><th>S</th>
             <th>Servicio</th><th>Man. Conj.</th>
             <th>Cédula</th><th>Tipo</th><th>Edad</th>
-            <th>Ingreso</th><th>DEH</th>
+            <th>Ingreso</th>
+            <th title="Días de Estancia Hospitalaria">DEH</th>
             <th>Diagnóstico</th><th>Pendientes</th><th>GPO/RH</th>
-            <th title="Prealerta">Pre</th><th title="Ventilador">Vent</th>
-            <th title="Aislado">Aisl</th><th title="Cirugía">Cir</th>
-            <th title="VPO">VPO</th><th title="Material Qx">Mat</th>
-            <th title="Riesgo">Riesgo</th>
+            <th title="Prealerta">✅</th>
+            <th title="Ventilador">💨</th>
+            <th title="Aislado">☢</th>
+            <th title="Cirugía pendiente">🔪</th>
+            <th title="VPO pendiente">📝</th>
+            <th title="Material Qx">🔩</th>
+            <th title="Caso de riesgo">⚠️</th>
             <th id="th-accion">Acción</th>
           </tr></thead>
           <tbody id="tbody">
@@ -124,14 +173,17 @@
   </main>
 </div>
 
-<!-- MODAL -->
+<!-- TOOLTIP HOVER -->
+<div class="tooltip-box" id="tooltip"></div>
+
+<!-- MODAL EDITAR/ASIGNAR -->
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal">
     <div class="modal-title" id="modal-title">Editar cama</div>
     <div class="field-row">
       <div class="field" style="flex:0 0 110px;">
         <label>Cama</label>
-        <input type="text" id="m-cama" readonly style="background:var(--bg);color:var(--texto-3);" />
+        <input type="text" id="m-cama" readonly style="background:var(--bg);color:var(--texto-3);"/>
       </div>
       <div class="field" style="flex:0 0 70px;">
         <label>Sexo</label>
@@ -149,12 +201,12 @@
       </div>
       <div class="field" style="flex:0 0 70px;">
         <label>Edad</label>
-        <input type="number" id="m-edad" min="0" max="120" />
+        <input type="number" id="m-edad" min="0" max="120"/>
       </div>
     </div>
     <div class="field">
       <label>Nombre del paciente</label>
-      <input type="text" id="m-nombre" placeholder="Apellido Paterno Materno Nombre" />
+      <input type="text" id="m-nombre" placeholder="Apellido Paterno Materno Nombre"/>
     </div>
     <div class="field-row">
       <div class="field">
@@ -185,27 +237,58 @@
       </div>
     </div>
     <div class="field-row">
-      <div class="field"><label>Cédula</label><input type="text" id="m-cedula" placeholder="XXXX000000" /></div>
-      <div class="field"><label>GPO y RH</label><input type="text" id="m-gpo" placeholder="A+" /></div>
-      <div class="field"><label>Fecha ingreso</label><input type="date" id="m-ingreso" /></div>
+      <div class="field"><label>Cédula</label><input type="text" id="m-cedula" placeholder="XXXX000000"/></div>
+      <div class="field"><label>GPO y RH</label><input type="text" id="m-gpo" placeholder="A+"/></div>
+      <div class="field"><label>Fecha ingreso</label><input type="date" id="m-ingreso"/></div>
     </div>
     <div class="field"><label>Diagnóstico</label><textarea id="m-dx" placeholder="Diagnóstico principal + comorbilidades"></textarea></div>
     <div class="field"><label>Pendientes</label><textarea id="m-pend" style="min-height:52px;" placeholder="Estudios, procedimientos, medicamentos pendientes"></textarea></div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:10px;">
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-pre" /> Prealerta</label>
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-vent" /> Ventilador</label>
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-aisl" /> Aislado</label>
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-cir" /> Cirugía</label>
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-vpo" /> VPO</label>
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-mat" /> Mat. Qx</label>
-      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-riesgo" /> Riesgo</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-pre"/> ✅ Prealerta</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-vent"/> 💨 Ventilador</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-aisl"/> ☢ Aislado</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-cir"/> 🔪 Cirugía</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-vpo"/> 📝 VPO</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-mat"/> 🔩 Mat. Qx</label>
+      <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-riesgo"/> ⚠️ Riesgo</label>
     </div>
-    <div id="btn-limpiar-wrap" style="margin-bottom:10px;display:none;">
-      <button class="btn btn-sm btn-danger" onclick="limpiarCama()">Dar de alta / liberar cama</button>
+    <div id="btn-limpiar-wrap" style="margin-bottom:10px;display:none;display:flex;gap:8px;">
+      <button class="btn btn-sm btn-danger" onclick="limpiarCama()">Liberar cama</button>
+      <button class="btn btn-sm" style="background:#f59e0b;color:#fff;border-color:#f59e0b;" onclick="openAltaModal()">🏥 Alta</button>
     </div>
     <div class="modal-footer">
       <button class="btn btn-sm" onclick="closeModal()">Cancelar</button>
       <button class="btn btn-sm btn-primary" onclick="saveModal()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ALTA -->
+<div class="modal-overlay" id="alta-overlay">
+  <div class="modal" style="max-width:400px;">
+    <div class="modal-title">🏥 Alta del paciente</div>
+    <div style="font-size:13px;color:var(--texto-2);margin-bottom:12px;">Selecciona el motivo de egreso:</div>
+    <div class="alta-opts">
+      <button class="alta-btn mejoria" onclick="selectAlta('Mejoría')">✅ Mejoría</button>
+      <button class="alta-btn defuncion" onclick="selectAlta('Defunción')">🕊️ Defunción</button>
+      <button class="alta-btn traslado" onclick="selectAlta('Traslado a otra unidad')">🚑 Traslado a otra unidad</button>
+    </div>
+    <div id="alta-form" style="display:none;">
+      <div class="field">
+        <label>Motivo de alta</label>
+        <input type="text" id="alta-motivo" readonly style="background:var(--bg);"/>
+      </div>
+      <div class="field">
+        <label>Fecha de alta</label>
+        <input type="date" id="alta-fecha"/>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-sm" onclick="closeAltaModal()">Cancelar</button>
+        <button class="btn btn-sm btn-primary" onclick="confirmarAlta()">Confirmar alta</button>
+      </div>
+    </div>
+    <div style="margin-top:8px;">
+      <button class="btn btn-sm" onclick="closeAltaModal()">← Volver</button>
     </div>
   </div>
 </div>
@@ -239,8 +322,12 @@ function calcDEH(fi){
   return d>=0?d:0;
 }
 
+function todayISO(){
+  return new Date().toISOString().split('T')[0];
+}
+
 (async()=>{
-  try {
+  try{
     currentUser=await requireAuth();
     if(!currentUser)return;
     renderHeader(currentUser);
@@ -250,10 +337,10 @@ function calcDEH(fi){
       document.getElementById('col-accion').style.width='0';
     }
     await loadCamas();
-  } catch(err) {
-    console.error('Error de inicialización:', err);
-    const tbody=document.getElementById('tbody');
-    if(tbody) tbody.innerHTML='<tr><td colspan="22" style="text-align:center;padding:2rem;color:#c00">Error al iniciar. Recarga la página o vuelve a iniciar sesión.</td></tr>';
+  }catch(err){
+    console.error('Error de inicialización:',err);
+    const t=document.getElementById('tbody');
+    if(t) t.innerHTML='<tr><td colspan="22" style="text-align:center;padding:2rem;color:#c00">Error al iniciar. Recarga la página o vuelve a iniciar sesión.</td></tr>';
   }
 })();
 
@@ -261,8 +348,8 @@ async function loadCamas(){
   const{data,error}=await db.from('camas_hospitalizacion').select('*').order('sort_order',{ascending:true});
   if(error){
     showToast('Error: '+error.message,'error');
-    const tbody=document.getElementById('tbody');
-    if(tbody) tbody.innerHTML='<tr><td colspan="22" style="text-align:center;padding:2rem;color:#c00">No se pudieron cargar los datos. Recarga la página.</td></tr>';
+    const t=document.getElementById('tbody');
+    if(t) t.innerHTML='<tr><td colspan="22" style="text-align:center;padding:2rem;color:#c00">No se pudieron cargar los datos.</td></tr>';
     return;
   }
   allRows=data||[];
@@ -300,11 +387,18 @@ function applyFilters(){
   renderTable(filtered);
 }
 
+// ── ICONOS ──
+function icoCell(val, ico, cls){
+  return val ? `<span class="ico ${cls}">${ico}</span>` : '';
+}
+
 function renderTable(rows){
   const canEdit=currentUser&&(currentUser.rol==='admin'||currentUser.rol==='editor');
   const tbody=document.getElementById('tbody');
-  if(!rows.length){tbody.innerHTML='<tr><td colspan="22" style="text-align:center;padding:24px;color:var(--texto-3);">Sin registros</td></tr>';return;}
-
+  if(!rows.length){
+    tbody.innerHTML='<tr><td colspan="22" style="text-align:center;padding:24px;color:var(--texto-3);">Sin registros</td></tr>';
+    return;
+  }
   tbody.innerHTML=rows.map(r=>{
     const vacio=!r.nombre_paciente;
     const isUCI=r.numero_cama.startsWith('UCI');
@@ -315,38 +409,103 @@ function renderTable(rows){
     const ing=r.fecha_ingreso?new Date(r.fecha_ingreso+'T00:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'2-digit'}):'';
     const sp=r.servicio?`<span class="serv-pill ${servClass(r.servicio)}">${r.servicio}</span>`:'';
     const mc=r.manejo_conjunto?`<span class="serv-pill ${servClass(r.manejo_conjunto)}">${r.manejo_conjunto}</span>`:'';
+    const rowId=`'${r.id}'`;
+
     if(vacio){
-      return `<tr class="${rc}" data-id="${r.id}" data-cama="${r.numero_cama}" ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragleave="onDragLeave(event)">
+      return `<tr class="${rc}" data-id="${r.id}" data-cama="${r.numero_cama}"
+        ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragleave="onDragLeave(event)"
+        ondblclick="openModalById(${rowId})">
         <td></td>
-        <td><span class="cama-lbl">${r.numero_cama}</span></td>
+        <td class="col-cama"><span class="cama-lbl">${r.numero_cama}</span></td>
         <td colspan="19"><span class="empty-cell">— disponible —</span></td>
-        <td style="display:${canEdit?'':'none'}">${canEdit?`<button class="btn btn-sm" onclick="openModalById('${r.id}')">Asignar</button>`:''}</td>
+        <td style="display:${canEdit?'':'none'}">
+          ${canEdit?`<button class="btn btn-sm" onclick="openModalById(${rowId})">Asignar</button>`:''}
+        </td>
       </tr>`;
     }
-    return `<tr class="${rc}" draggable="${canEdit}" data-id="${r.id}" data-cama="${r.numero_cama}"
-      ondragstart="onDragStart(event)" ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragleave="onDragLeave(event)">
+
+    const rData=encodeURIComponent(JSON.stringify({
+      cama:r.numero_cama,nombre:r.nombre_paciente,sexo:r.sexo,serv:r.servicio,
+      mc:r.manejo_conjunto,cedula:r.cedula,tipo:r.tipo_dh,edad:r.edad,
+      ingreso:ing,deh:deh,dx:r.diagnostico,pend:r.pendientes,gpo:r.gpo_rh,
+      pre:r.prealerta,vent:r.ventilador,aisl:r.aislado,cir:r.cirugia_pendiente,
+      vpo:r.vpo_pendiente,mat:r.material_qx,riesgo:r.caso_riesgo
+    }));
+
+    return `<tr class="${rc} has-patient" draggable="${canEdit}" data-id="${r.id}" data-cama="${r.numero_cama}"
+      ondragstart="onDragStart(event)" ondragover="onDragOver(event)" ondrop="onDrop(event)" ondragleave="onDragLeave(event)"
+      ondblclick="openModalById(${rowId})"
+      onmouseenter="showTooltip(event,'${rData}')" onmouseleave="hideTooltip()">
       <td><span class="drag-handle" title="Arrastrar para cambiar de cama">⠿</span></td>
-      <td><span class="cama-lbl">${r.numero_cama}</span></td>
+      <td class="col-cama"><span class="cama-lbl">${r.numero_cama}</span></td>
       <td title="${r.nombre_paciente||''}" style="font-size:11px;">${trunc(r.nombre_paciente,22)}</td>
       <td>${r.sexo||''}</td>
       <td>${sp}</td><td>${mc}</td>
       <td style="font-size:10px;font-family:'IBM Plex Mono',monospace;">${r.cedula||''}</td>
       <td>${r.tipo_dh||''}</td><td>${r.edad||''}</td>
       <td style="font-size:10px;">${ing}</td>
-      <td>${dehH}</td>
+      <td style="font-weight:600;">${dehH}</td>
       <td title="${r.diagnostico||''}" style="font-size:10px;">${trunc(r.diagnostico,35)}</td>
       <td title="${r.pendientes||''}" style="font-size:10px;">${trunc(r.pendientes,28)}</td>
       <td style="font-size:10px;">${r.gpo_rh||''}</td>
-      <td>${chkHtml(r.prealerta)}</td><td>${chkHtml(r.ventilador)}</td>
-      <td>${chkHtml(r.aislado)}</td><td>${chkHtml(r.cirugia_pendiente)}</td>
-      <td>${chkHtml(r.vpo_pendiente)}</td><td>${chkHtml(r.material_qx,true)}</td>
-      <td>${chkHtml(r.caso_riesgo,true)}</td>
-      <td style="display:${canEdit?'':'none'}">${canEdit?`<button class="btn btn-sm" onclick="openModalById('${r.id}')">Editar</button>`:''}</td>
+      <td>${icoCell(r.prealerta,'✅','ico-pre')}</td>
+      <td>${icoCell(r.ventilador,'💨','ico-vent')}</td>
+      <td>${icoCell(r.aislado,'☢','ico-aisl')}</td>
+      <td>${icoCell(r.cirugia_pendiente,'🔪','ico-cir')}</td>
+      <td>${icoCell(r.vpo_pendiente,'📝','ico-vpo')}</td>
+      <td>${icoCell(r.material_qx,'🔩','ico-mat')}</td>
+      <td>${icoCell(r.caso_riesgo,'⚠️','ico-riesgo')}</td>
+      <td style="display:${canEdit?'':'none'}">
+        ${canEdit?`<button class="btn btn-sm" onclick="openModalById(${rowId})">Editar</button>`:''}
+      </td>
     </tr>`;
   }).join('');
 }
 
-// Drag & drop
+// ── TOOLTIP ──
+function showTooltip(e, encoded){
+  const d=JSON.parse(decodeURIComponent(encoded));
+  const tt=document.getElementById('tooltip');
+  const icons=[
+    d.pre?'✅ Prealerta':'',
+    d.vent?'💨 Ventilador':'',
+    d.aisl?'☢ Aislado':'',
+    d.cir?'🔪 Cirugía':'',
+    d.vpo?'📝 VPO':'',
+    d.mat?'🔩 Mat.Qx':'',
+    d.riesgo?'⚠️ Riesgo':''
+  ].filter(Boolean).join('  ');
+
+  tt.innerHTML=`
+    <div class="tt-title">${d.nombre||''}</div>
+    <div class="tt-row"><span class="tt-label">Cama:</span>${d.cama}</div>
+    ${d.serv?`<div class="tt-row"><span class="tt-label">Servicio:</span>${d.serv}${d.mc?' / '+d.mc:''}</div>`:''}
+    ${d.cedula?`<div class="tt-row"><span class="tt-label">Cédula:</span>${d.cedula}</div>`:''}
+    ${d.edad?`<div class="tt-row"><span class="tt-label">Edad:</span>${d.edad} años</div>`:''}
+    ${d.ingreso?`<div class="tt-row"><span class="tt-label">Ingreso:</span>${d.ingreso} (DEH: ${d.deh??'—'})</div>`:''}
+    ${d.dx?`<div class="tt-row"><span class="tt-label">Dx:</span><span style="flex:1;">${d.dx}</span></div>`:''}
+    ${d.pend?`<div class="tt-row"><span class="tt-label">Pendientes:</span><span style="flex:1;">${d.pend}</span></div>`:''}
+    ${icons?`<div class="tt-icons">${icons}</div>`:''}
+  `;
+  tt.classList.add('visible');
+  posTooltip(e);
+}
+function posTooltip(e){
+  const tt=document.getElementById('tooltip');
+  const x=e.clientX+16, y=e.clientY+10;
+  const w=tt.offsetWidth||300;
+  tt.style.left=(x+w>window.innerWidth?e.clientX-w-10:x)+'px';
+  tt.style.top=(y+200>window.innerHeight?e.clientY-tt.offsetHeight-10:y)+'px';
+}
+function hideTooltip(){
+  document.getElementById('tooltip').classList.remove('visible');
+}
+document.addEventListener('mousemove',e=>{
+  const tt=document.getElementById('tooltip');
+  if(tt.classList.contains('visible')) posTooltip(e);
+});
+
+// ── DRAG & DROP ──
 function onDragStart(e){dragSrcId=e.currentTarget.dataset.id;e.currentTarget.classList.add('dragging');e.dataTransfer.effectAllowed='move';}
 function onDragOver(e){e.preventDefault();e.currentTarget.classList.add('drag-over');}
 function onDragLeave(e){e.currentTarget.classList.remove('drag-over');}
@@ -371,6 +530,7 @@ async function onDrop(e){
   await loadCamas();
 }
 
+// ── MODAL EDITAR ──
 function openModalById(id){const r=allRows.find(x=>x.id===id);if(r)openModal(r);}
 
 function openModal(row){
@@ -380,7 +540,6 @@ function openModal(row){
   document.getElementById('m-cama').value=row?row.numero_cama:'';
   document.getElementById('m-sexo').value=row?(row.sexo||'M'):'M';
   document.getElementById('m-nombre').value=row?(row.nombre_paciente||''):'';
-
   document.getElementById('m-serv').value=row?(row.servicio||''):'';
   document.getElementById('m-manejo').value=row?(row.manejo_conjunto||''):'';
   document.getElementById('m-tipo').value=row?(row.tipo_dh||''):'';
@@ -397,14 +556,17 @@ function openModal(row){
   document.getElementById('m-vpo').checked=!!(row&&row.vpo_pendiente);
   document.getElementById('m-mat').checked=!!(row&&row.material_qx);
   document.getElementById('m-riesgo').checked=!!(row&&row.caso_riesgo);
-  document.getElementById('btn-limpiar-wrap').style.display=tp?'':'none';
+  document.getElementById('btn-limpiar-wrap').style.display=tp?'flex':'none';
   document.getElementById('modal-overlay').classList.add('open');
 }
 
-function closeModal(){document.getElementById('modal-overlay').classList.remove('open');editingId=null;}
+function closeModal(){
+  document.getElementById('modal-overlay').classList.remove('open');
+  editingId=null;
+}
 
 async function limpiarCama(){
-  if(!confirm('¿Confirmas dar de alta al paciente y liberar esta cama?'))return;
+  if(!confirm('¿Confirmas liberar esta cama sin registrar egreso?'))return;
   const p={nombre_paciente:null,sexo:null,servicio:null,manejo_conjunto:null,cedula:null,tipo_dh:null,gpo_rh:null,edad:null,fecha_ingreso:null,diagnostico:null,pendientes:null,prealerta:false,ventilador:false,aislado:false,cirugia_pendiente:false,vpo_pendiente:false,material_qx:false,caso_riesgo:false};
   const{error}=await db.from('camas_hospitalizacion').update(p).eq('id',editingId);
   if(error)showToast('Error: '+error.message,'error');
@@ -437,8 +599,62 @@ async function saveModal(){
   else{showToast('Guardado','success');closeModal();await loadCamas();}
 }
 
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+// ── MODAL ALTA ──
+function openAltaModal(){
+  document.getElementById('alta-form').style.display='none';
+  document.getElementById('alta-motivo').value='';
+  document.getElementById('alta-fecha').value=todayISO();
+  document.getElementById('alta-overlay').classList.add('open');
+}
+function closeAltaModal(){
+  document.getElementById('alta-overlay').classList.remove('open');
+}
+function selectAlta(motivo){
+  document.getElementById('alta-motivo').value=motivo;
+  document.getElementById('alta-fecha').value=todayISO();
+  document.getElementById('alta-form').style.display='block';
+}
+async function confirmarAlta(){
+  const motivo=document.getElementById('alta-motivo').value;
+  const fecha=document.getElementById('alta-fecha').value;
+  if(!fecha){showToast('Indica la fecha de alta','error');return;}
+
+  const row=allRows.find(r=>r.id===editingId);
+  if(!row)return;
+
+  // Guardar en tabla EGRESOS_HOSPITAL
+  const egreso={
+    numero_cama:     row.numero_cama,
+    nombre_paciente: row.nombre_paciente,
+    sexo:            row.sexo,
+    servicio:        row.servicio,
+    manejo_conjunto: row.manejo_conjunto,
+    cedula:          row.cedula,
+    tipo_dh:         row.tipo_dh,
+    gpo_rh:          row.gpo_rh,
+    edad:            row.edad,
+    fecha_ingreso:   row.fecha_ingreso,
+    diagnostico:     row.diagnostico,
+    motivo_alta:     motivo,
+    fecha_alta:      fecha,
+  };
+
+  const{error:eErr}=await db.from('egresos_hospital').insert(egreso);
+  if(eErr){showToast('Error al registrar egreso: '+eErr.message,'error');return;}
+
+  // Limpiar cama
+  const limpio={nombre_paciente:null,sexo:null,servicio:null,manejo_conjunto:null,cedula:null,tipo_dh:null,gpo_rh:null,edad:null,fecha_ingreso:null,diagnostico:null,pendientes:null,prealerta:false,ventilador:false,aislado:false,cirugia_pendiente:false,vpo_pendiente:false,material_qx:false,caso_riesgo:false};
+  await db.from('camas_hospitalizacion').update(limpio).eq('id',editingId);
+
+  showToast(`Alta registrada: ${motivo}`,'success');
+  closeAltaModal();
+  closeModal();
+  await loadCamas();
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeAltaModal();}});
 document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
+document.getElementById('alta-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('alta-overlay'))closeAltaModal();});
 </script>
 </body>
 </html>
