@@ -368,7 +368,8 @@ function openModal(row){
   document.getElementById('modal-title').textContent=tp?`Editar — Cama ${row.numero_cama}`:`Asignar — Cama ${row?row.numero_cama:''}`;
   document.getElementById('m-cama').value=row?row.numero_cama:'';
   document.getElementById('m-sexo').value=row?(row.sexo||'M'):'M';
-  document.getElementById('m-nombre').value=row?(row.nombre_paciente||')':'';
+  document.getElementById('m-nombre').value=row?(row.nombre_paciente||''):'';
+
   document.getElementById('m-serv').value=row?(row.servicio||''):'';
   document.getElementById('m-manejo').value=row?(row.manejo_conjunto||''):'';
   document.getElementById('m-tipo').value=row?(row.tipo_dh||''):'';
