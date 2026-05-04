@@ -8,8 +8,8 @@
    4. Copia "anon public" key y pégalo en SUPABASE_ANON_KEY
    ================================================================ */
 
-const SUPABASE_URL      = 'https://TUPROYECTO.supabase.co';   // ← CAMBIA ESTO
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIs...';          // ← CAMBIA ESTO
+const SUPABASE_URL      = 'https://zvhtkwaftophzzjlgnwd.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2aHRrd2FmdG9waHp6amxnbndkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4Mzk0MjAsImV4cCI6MjA5MzQxNTQyMH0.5r3J66MMg2sK5AKJAdSEETDfDxlQrbI0bO10W2dfR3Q';
 
 /* Carga el cliente de Supabase desde CDN.
    No necesitas instalar nada. */
