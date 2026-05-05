@@ -59,13 +59,13 @@
         <div id="users-list"><div class="loading"><div class="spinner"></div> Cargando…</div></div>
 
         <div class="add-user-form" style="margin-top:14px;">
-          <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--texto);">Agregar nuevo usuario</div>
+          <div style="font-size:13px;font-weight:600;margin-bottom:4px;color:var(--texto);">Agregar nuevo usuario</div>
+          <div style="font-size:11px;color:var(--texto-2);margin-bottom:12px;">El usuario recibirá un correo con enlace para establecer su contraseña.</div>
           <div class="form-row">
             <input type="text" id="nu-nombre" placeholder="Nombre completo"/>
             <input type="email" id="nu-email" placeholder="correo@hospital.mx"/>
           </div>
           <div class="form-row">
-            <input type="password" id="nu-pass" placeholder="Contraseña (mín. 8 caracteres)"/>
             <select id="nu-rol">
               <option value="viewer">Visor — solo lectura</option>
               <option value="editor">Editor — edita camas</option>
@@ -77,7 +77,10 @@
               <option value="admin">Administrador — acceso total</option>
             </select>
           </div>
-          <button class="btn-sm-primary" onclick="createUser()">Crear usuario</button>
+          <button class="btn-sm-primary" onclick="createUser()">📧 Enviar invitación</button>
+          <div id="invite-info" style="display:none;margin-top:10px;background:var(--verde-lt);border:1px solid #b2d98a;border-radius:var(--radio);padding:8px 12px;font-size:12px;color:var(--verde);">
+            ✅ Se envió el correo de invitación. El usuario debe abrir el enlace y crear su contraseña antes de poder iniciar sesión.
+          </div>
         </div>
       </div>
 
@@ -224,29 +227,44 @@ async function loadUsers(){
 async function createUser(){
   const nombre=document.getElementById('nu-nombre').value.trim();
   const email=document.getElementById('nu-email').value.trim();
-  const pass=document.getElementById('nu-pass').value;
   const rol=document.getElementById('nu-rol').value;
-  if(!nombre||!email||!pass){showToast('Completa todos los campos','error');return;}
-  if(pass.length<8){showToast('Contraseña mínimo 8 caracteres','error');return;}
-  const{data:authData,error:authErr}=await db.auth.admin.createUser({email,password:pass,email_confirm:true});
-  if(authErr){showToast('Error: '+authErr.message,'error');return;}
-  const{error:dbErr}=await db.from('usuarios').insert({auth_id:authData.user.id,nombre,email,rol});
-  if(dbErr){showToast('Error al guardar perfil: '+dbErr.message,'error');}
-  else{
-    showToast('Usuario creado','success');
-    document.getElementById('nu-nombre').value='';
-    document.getElementById('nu-email').value='';
-    document.getElementById('nu-pass').value='';
-    await loadUsers();
+  if(!nombre||!email){showToast('Nombre y correo son obligatorios','error');return;}
+
+  // Paso 1: verificar que no exista ya
+  const{data:existing}=await db.from('usuarios').select('id').eq('email',email).maybeSingle();
+  if(existing){showToast('Este correo ya está registrado','error');return;}
+
+  // Paso 2: enviar invitación por correo (Supabase Auth Magic Link / Invite)
+  const{error:invErr}=await db.auth.signInWithOtp({
+    email,
+    options:{
+      shouldCreateUser:true,
+      emailRedirectTo: window.location.origin + '/CH-Dr-MTO-Admin/set_password.html'
+    }
+  });
+  if(invErr){showToast('Error al enviar invitación: '+invErr.message,'error');return;}
+
+  // Paso 3: pre-registrar perfil en tabla usuarios (sin auth_id aún, se vincula al primer login)
+  const{error:dbErr}=await db.from('usuarios_pendientes').insert({nombre,email,rol});
+  if(dbErr){
+    // Si no existe la tabla, crear directamente sin auth_id
+    await db.from('usuarios').insert({auth_id:null,nombre,email,rol});
   }
+
+  showToast(`✅ Invitación enviada a ${email}. El usuario recibirá un correo para establecer su contraseña.`,'success');
+  document.getElementById('nu-nombre').value='';
+  document.getElementById('nu-email').value='';
+  document.getElementById('nu-rol').value='viewer';
+  document.getElementById('invite-info').style.display='block';
+  await loadUsers();
 }
 
-async function deleteUser(id,authId){
+async function deleteUser(id, authId){
   if(!confirm('¿Seguro que deseas eliminar este usuario?'))return;
-  await db.auth.admin.deleteUser(authId);
   const{error}=await db.from('usuarios').delete().eq('id',id);
-  if(error)showToast('Error: '+error.message,'error');
-  else{showToast('Eliminado','success');await loadUsers();}
+  if(error){showToast('Error: '+error.message,'error');return;}
+  showToast('Usuario eliminado del sistema','success');
+  await loadUsers();
 }
 
 // ── MÉDICOS ──
