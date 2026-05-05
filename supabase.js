@@ -25,11 +25,26 @@ async function getSession() {
 async function getUser() {
   const session = await getSession();
   if (!session) return null;
-  const { data } = await db
+
+  // Buscar por auth_id primero
+  let { data } = await db
     .from('usuarios')
     .select('*')
     .eq('auth_id', session.user.id)
-    .single();
+    .maybeSingle();
+
+  // Si no encontró, buscar por email y vincular auth_id
+  if (!data) {
+    const { data: byEmail } = await db
+      .from('usuarios')
+      .select('*')
+      .eq('email', session.user.email)
+      .maybeSingle();
+    if (byEmail) {
+      await db.from('usuarios').update({ auth_id: session.user.id }).eq('id', byEmail.id);
+      data = { ...byEmail, auth_id: session.user.id };
+    }
+  }
   return data;
 }
 

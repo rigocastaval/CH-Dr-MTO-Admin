@@ -53,7 +53,16 @@
   /* Si ya hay sesión activa, redirige directo */
   (async () => {
     const session = await getSession();
-    if (session) window.location.href = 'hospitalizacion.html';
+    if (session) {
+      const user = await getUser();
+      const rol = user?.rol || 'viewer';
+      const destino = {
+        ventanilla_admision: 'admision_urgencias.html',
+        director:            'reporte.html',
+        subdirector:         'reporte.html',
+      };
+      window.location.href = destino[rol] || 'hospitalizacion.html';
+    }
   })();
 
   async function doLogin() {
@@ -80,7 +89,44 @@
       btn.textContent = 'Iniciar sesión';
       btn.disabled = false;
     } else {
-      window.location.href = 'hospitalizacion.html';
+      // Obtener sesión y buscar perfil por auth_id O por email
+      const { data: { session } } = await db.auth.getSession();
+      let rol = 'viewer';
+      if (session) {
+        // Primero por auth_id
+        let { data: perfil } = await db
+          .from('usuarios')
+          .select('rol, auth_id, id')
+          .eq('auth_id', session.user.id)
+          .maybeSingle();
+
+        // Si no hay, buscar por email y vincular auth_id
+        if (!perfil) {
+          const { data: perfilEmail } = await db
+            .from('usuarios')
+            .select('rol, auth_id, id')
+            .eq('email', session.user.email)
+            .maybeSingle();
+          if (perfilEmail) {
+            // Vincular auth_id ahora que el usuario inició sesión
+            await db.from('usuarios').update({ auth_id: session.user.id }).eq('id', perfilEmail.id);
+            perfil = perfilEmail;
+          }
+        }
+        rol = perfil?.rol || 'viewer';
+      }
+
+      const DESTINO = {
+        ventanilla_admision: 'admision_urgencias.html',
+        director:            'reporte.html',
+        subdirector:         'reporte.html',
+        medico_operativo:    'hospitalizacion.html',
+        jefa_enfermeria:     'hospitalizacion.html',
+        admin:               'hospitalizacion.html',
+        editor:              'hospitalizacion.html',
+        viewer:              'hospitalizacion.html',
+      };
+      window.location.href = DESTINO[rol] || 'hospitalizacion.html';
     }
   }
 
