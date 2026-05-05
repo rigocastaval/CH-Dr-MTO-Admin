@@ -237,11 +237,8 @@
   <div class="modal" style="max-width:560px;">
     <div class="modal-title" id="modal-title">Registrar paciente</div>
 
-    <!-- Opciones: vincular o nuevo -->
-    <div id="modal-opciones" style="display:flex;gap:10px;margin-bottom:16px;">
-      <button class="btn btn-primary" style="flex:1;" onclick="showVincular()">🔗 Vincular de Urgencias</button>
-      <button class="btn" style="flex:1;" onclick="showNuevo()">✏️ Capturar manualmente</button>
-    </div>
+    <!-- Opciones: solo captura manual -->
+    <div id="modal-opciones" style="display:none;"></div>
 
     <!-- Formulario paciente -->
     <div id="modal-form" style="display:none;">
@@ -489,9 +486,11 @@ function renderTable(rows){
 function openModalNuevo(){
   editingId=null;
   document.getElementById('modal-title').textContent='Registrar paciente';
-  document.getElementById('modal-opciones').style.display='flex';
-  document.getElementById('modal-form').style.display='none';
+  document.getElementById('modal-form').style.display='block';
   clearForm();
+  // Auto hora actual
+  const now=new Date();
+  document.getElementById('m-hora').value=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   document.getElementById('modal-overlay').classList.add('open');
 }
 
@@ -517,18 +516,7 @@ function openModalEditar(id){
   document.getElementById('modal-overlay').classList.add('open');
 }
 
-function showNuevo(){
-  document.getElementById('modal-opciones').style.display='none';
-  document.getElementById('modal-form').style.display='block';
-  // Auto hora actual
-  const now=new Date();
-  document.getElementById('m-hora').value=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
-}
-
-function showVincular(){
-  document.getElementById('modal-overlay').classList.remove('open');
-  openVincular();
-}
+function showNuevo(){ /* no-op, form already shown */ }
 
 function clearForm(){
   ['m-nombre','m-rfc','m-sintomas','m-medico'].forEach(id=>document.getElementById(id).value='');

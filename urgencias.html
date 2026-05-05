@@ -172,6 +172,14 @@
 <div class="modal-overlay" id="modal-overlay">
   <div class="modal">
     <div class="modal-title" id="modal-title">Editar cama</div>
+
+    <!-- Botón vincular desde Admisión -->
+    <div id="vincular-admision-wrap" style="margin-bottom:12px;">
+      <button class="btn btn-sm" style="background:#EEF4FF;border-color:#185FA5;color:#185FA5;font-weight:500;" onclick="openVincularAdmision()">
+        🔗 Vincular desde Admisión Urgencias
+      </button>
+      <span style="font-size:11px;color:var(--texto-3);margin-left:8px;">O captura manualmente abajo</span>
+    </div>
     <div class="field-row">
       <div class="field" style="flex:0 0 110px;"><label>Cama</label><input type="text" id="m-cama" readonly style="background:var(--bg);color:var(--texto-3);"/></div>
       <div class="field" style="flex:0 0 70px;"><label>Sexo</label><select id="m-sexo"><option value="M">M</option><option value="F">F</option></select></div>
@@ -683,13 +691,85 @@ async function registrarEgresoUrgencias(motivo, fecha, camaHosp){
   await loadCamas();
 }
 
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeAltaModal();closePreview();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeAltaModal();closePreview();closeVincularAdmision();}});
 document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
 document.getElementById('alta-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('alta-overlay'))closeAltaModal();});
 document.addEventListener('click',e=>{
   const panel=document.getElementById('preview-panel');
   if(panel.classList.contains('visible')&&!panel.contains(e.target)&&!e.target.closest('#tbody tr'))closePreview();
 });
+
+// ── VINCULAR DESDE ADMISIÓN URGENCIAS ──
+let admisionPacientes=[];
+
+async function openVincularAdmision(){
+  document.getElementById('va-search').value='';
+  document.getElementById('va-overlay').classList.add('open');
+  document.getElementById('va-grid').innerHTML='<div class="loading"><div class="spinner"></div> Cargando…</div>';
+  const{data,error}=await db.from('admision_urgencias')
+    .select('id,nombre_paciente,rfc_cedula,tipo_dh,edad,sintomas,estado,hora_llegada')
+    .neq('estado','Se retiró')
+    .order('numero',{ascending:true});
+  if(error||!data){document.getElementById('va-grid').innerHTML='<p style="color:#c00;font-size:12px;">Error al cargar admisión</p>';return;}
+  admisionPacientes=data;
+  renderVincularAdmision(admisionPacientes);
+}
+
+function filterVA(){
+  const q=document.getElementById('va-search').value.toLowerCase();
+  renderVincularAdmision(admisionPacientes.filter(p=>(p.nombre_paciente||'').toLowerCase().includes(q)));
+}
+
+function renderVincularAdmision(list){
+  const grid=document.getElementById('va-grid');
+  if(!list.length){grid.innerHTML='<p style="font-size:12px;color:var(--texto-3);">Sin pacientes en admisión</p>';return;}
+  grid.innerHTML=list.map(p=>`
+    <div style="padding:8px 12px;border:1px solid var(--gris-borde);border-radius:var(--radio);cursor:pointer;font-size:12px;background:var(--surface);margin-bottom:6px;transition:background .12s;"
+      onmouseover="this.style.background='var(--azul-lt)'" onmouseout="this.style.background='var(--surface)'"
+      onclick="seleccionarDeAdmision('${(p.nombre_paciente||'').replace(/'/g,"\\'")}','${p.rfc_cedula||''}','${p.tipo_dh||''}',${p.edad||0},'${p.sintomas?.replace(/'/g,"\\'").replace(/\n/g,' ')||''}')">
+      <div style="font-weight:600;color:var(--texto);">${p.nombre_paciente||''}</div>
+      <div style="color:var(--texto-2);font-size:11px;margin-top:2px;">
+        RFC: ${p.rfc_cedula||'—'} · Tipo: ${p.tipo_dh||'—'} · Edad: ${p.edad||'—'} · ${p.hora_llegada||''} · 
+        <span style="color:${p.estado==='Sala de espera'?'var(--naranja)':'var(--verde)'};">${p.estado||''}</span>
+      </div>
+      ${p.sintomas?`<div style="color:var(--texto-3);font-size:10px;margin-top:2px;">${p.sintomas.substring(0,60)}…</div>`:''}
+    </div>
+  `).join('');
+}
+
+function seleccionarDeAdmision(nombre,rfc,tipo,edad,sintomas){
+  closeVincularAdmision();
+  document.getElementById('m-nombre').value=nombre;
+  document.getElementById('m-cedula').value=rfc;
+  document.getElementById('m-tipo').value=tipo;
+  document.getElementById('m-edad').value=edad||'';
+  // Poner síntomas en diagnóstico si está vacío
+  const dxEl=document.getElementById('m-dx');
+  if(!dxEl.value&&sintomas) dxEl.value=sintomas;
+  // Auto fecha hoy
+  if(!document.getElementById('m-ingreso').value){
+    document.getElementById('m-ingreso').value=new Date().toISOString().split('T')[0];
+  }
+  showToast('Datos vinculados desde Admisión','success');
+}
+
+function closeVincularAdmision(){document.getElementById('va-overlay').classList.remove('open');}
+document.getElementById('va-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('va-overlay'))closeVincularAdmision();});
 </script>
+
+<!-- MODAL VINCULAR DESDE ADMISIÓN -->
+<div class="modal-overlay" id="va-overlay" style="z-index:600;">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-title">🔗 Vincular desde Admisión Urgencias</div>
+    <div style="font-size:12px;color:var(--texto-2);margin-bottom:8px;">Selecciona el paciente registrado en admisión:</div>
+    <input class="search-input" id="va-search" type="text" placeholder="Buscar nombre…" oninput="filterVA()" style="width:100%;margin-bottom:10px;"/>
+    <div id="va-grid" style="max-height:320px;overflow-y:auto;">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+    <div style="margin-top:10px;">
+      <button class="btn btn-sm" onclick="closeVincularAdmision()">Cancelar</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
