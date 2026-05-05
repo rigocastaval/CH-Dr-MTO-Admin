@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admisión Urgencias — Sistema Hospitalario</title>
+  <link rel="stylesheet" href="styles.css"/>
+  <style>
+    .header-date{font-size:12px;color:var(--texto-2);background:var(--bg);border:1px solid var(--gris-borde);border-radius:var(--radio);padding:4px 10px;}
+
+    /* Panel superior */
+    .turno-panel{
+      background:var(--surface);border:1px solid var(--gris-borde);
+      border-radius:var(--radio-lg);padding:14px 18px;margin-bottom:14px;
+      display:flex;gap:16px;flex-wrap:wrap;align-items:center;
+    }
+    .turno-field{display:flex;flex-direction:column;gap:3px;}
+    .turno-field label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--texto-3);}
+    .turno-field input,.turno-field select{
+      padding:6px 10px;border:1px solid var(--gris-borde);border-radius:var(--radio);
+      font-size:13px;background:var(--surface);color:var(--texto);
+    }
+    .turno-field input{width:200px;}
+
+    /* Médicos panel */
+    .medicos-panel{
+      background:var(--surface);border:1px solid var(--gris-borde);
+      border-radius:var(--radio-lg);padding:14px 18px;margin-bottom:14px;
+    }
+    .medicos-grid{display:flex;gap:12px;flex-wrap:wrap;margin-top:10px;}
+    .medico-card{
+      background:var(--bg);border:1px solid var(--gris-borde);border-radius:var(--radio);
+      padding:8px 14px;display:flex;align-items:center;gap:10px;font-size:13px;
+    }
+    .cons-badge{
+      width:28px;height:28px;border-radius:50%;background:var(--azul);color:#fff;
+      display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;flex-shrink:0;
+    }
+    .medico-count{font-size:11px;color:var(--texto-3);margin-left:4px;}
+
+    /* Reporte resumen */
+    .reporte-mini{
+      background:var(--surface);border:1px solid var(--gris-borde);
+      border-radius:var(--radio-lg);padding:14px 18px;margin-bottom:14px;
+    }
+    .rep-mini-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--rojo);margin-bottom:10px;}
+    .rep-mini-totals{display:flex;gap:24px;margin-bottom:10px;}
+    .rep-mini-num{text-align:center;}
+    .rep-mini-num .big{font-size:22px;font-weight:700;color:var(--azul);font-family:'IBM Plex Mono',monospace;}
+    .rep-mini-num .lbl{font-size:10px;color:var(--texto-3);}
+    .rep-mini-table{width:100%;border-collapse:collapse;font-size:12px;}
+    .rep-mini-table th{background:var(--bg);padding:5px 10px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--texto-2);border-bottom:1px solid var(--gris-borde);}
+    .rep-mini-table th.num{text-align:center;}
+    .rep-mini-table td{padding:5px 10px;border-bottom:1px solid #F1EFE8;color:var(--texto);}
+    .rep-mini-table td.num{text-align:center;font-family:'IBM Plex Mono',monospace;font-weight:500;}
+
+    /* Tabla admisión */
+    td.col-cama,th.col-cama{position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:2px 0 4px rgba(0,0,0,.07);}
+    thead th.col-cama{background:var(--bg);z-index:3;}
+    .estado-pill{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:600;}
+    .ep-espera{background:#FFF9E6;color:#854F0B;}
+    .ep-atendido{background:var(--verde-lt);color:var(--verde);}
+    .ep-retirado{background:#F1EFE8;color:var(--texto-3);}
+    .area-pill{font-size:10px;padding:2px 7px;border-radius:10px;font-weight:500;}
+    .ap-urg{background:var(--rojo-lt);color:var(--rojo);}
+    .ap-obs{background:#F4C0D1;color:#4B1528;}
+    .ap-cx{background:var(--azul-lt);color:var(--azul-dk);}
+
+    /* Modal vincular */
+    .vincular-grid{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;margin:10px 0;}
+    .vincular-item{
+      padding:8px 12px;border:1px solid var(--gris-borde);border-radius:var(--radio);
+      cursor:pointer;font-size:12px;background:var(--surface);transition:background .12s;
+    }
+    .vincular-item:hover{background:var(--azul-lt);border-color:var(--azul);}
+    .vincular-item .vi-nombre{font-weight:600;color:var(--texto);}
+    .vincular-item .vi-datos{color:var(--texto-2);font-size:11px;margin-top:2px;}
+
+    @media print{
+      .header,.sidebar,.table-toolbar,.turno-panel-actions{display:none!important;}
+      .app-layout{display:block;}
+      .main{padding:0;}
+    }
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="logo_issste.png" alt="ISSSTE" style="height:36px;object-fit:contain;"/>
+  </div>
+  <div class="header-right">
+    <span class="header-date" id="fecha-hoy"></span>
+    <span id="hdr-user" style="font-size:12px;color:var(--texto-2);"></span>
+    <span id="hdr-badge" class="badge badge-admin">Admin</span>
+    <button class="btn btn-sm" onclick="logout()">Salir</button>
+  </div>
+</header>
+
+<div class="app-layout">
+  <nav class="sidebar" id="sidebar">
+    <div class="sidebar-section">Servicios</div>
+    <a class="sidebar-item" href="hospitalizacion.html"><span class="sidebar-dot" style="background:#185FA5;"></span>Hospitalización</a>
+    <a class="sidebar-item" href="urgencias.html"><span class="sidebar-dot" style="background:#E24B4A;"></span>Urgencias</a>
+    <div class="sidebar-section">Egresos</div>
+    <a class="sidebar-item" href="egresos_hospital.html"><span class="sidebar-dot" style="background:#22c55e;"></span>Egresos Hospital</a>
+    <a class="sidebar-item" href="egresos_urgencias.html"><span class="sidebar-dot" style="background:#f59e0b;"></span>Egresos Urgencias</a>
+    <div class="sidebar-section">Admisión</div>
+    <a class="sidebar-item active" href="admision_urgencias.html"><span class="sidebar-dot" style="background:#E24B4A;"></span>Admisión Urgencias</a>
+    <div class="sidebar-section">Informes</div>
+    <a class="sidebar-item" href="reporte.html"><span class="sidebar-dot" style="background:#6366f1;"></span>Reporte</a>
+    <div class="sidebar-section" id="nav-admin-sec">Sistema</div>
+    <a class="sidebar-item" id="nav-admin" href="admin.html"><span class="sidebar-dot" style="background:#854F0B;"></span>Administrador</a>
+  </nav>
+
+  <main class="main">
+
+    <!-- Panel turno + responsable -->
+    <div class="turno-panel">
+      <div class="turno-field">
+        <label>Responsable</label>
+        <input type="text" id="responsable" placeholder="Nombre completo"/>
+      </div>
+      <div class="turno-field">
+        <label>Turno</label>
+        <select id="turno">
+          <option value="Matutino">Matutino</option>
+          <option value="Vespertino">Vespertino</option>
+          <option value="Nocturno LMV">Nocturno Lun-Mié-Vie</option>
+          <option value="Nocturno MJV">Nocturno Mar-Jue-Vie</option>
+          <option value="Jornada Acumulada Diurna" selected>Jornada Acumulada Diurna</option>
+          <option value="Jornada Acumulada Nocturna">Jornada Acumulada Nocturna</option>
+        </select>
+      </div>
+      <div class="turno-field">
+        <label>Fecha</label>
+        <input type="date" id="fecha-turno"/>
+      </div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center;" class="turno-panel-actions">
+        <button class="btn btn-sm btn-primary" onclick="openModalNuevo()">+ Nuevo paciente</button>
+        <button class="btn btn-sm" onclick="window.print()">🖨️ Imprimir</button>
+      </div>
+    </div>
+
+    <!-- Panel médicos por consultorio -->
+    <div class="medicos-panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="font-size:13px;font-weight:600;color:var(--texto);">Médicos por consultorio</div>
+        <div style="font-size:11px;color:var(--texto-3);">El administrador gestiona los médicos en el panel de Administrador</div>
+      </div>
+      <div class="medicos-grid" id="medicos-grid">
+        <div class="loading"><div class="spinner"></div> Cargando médicos…</div>
+      </div>
+    </div>
+
+    <!-- Reporte mini -->
+    <div class="reporte-mini">
+      <div class="rep-mini-title">Reporte</div>
+      <div class="rep-mini-totals" id="rep-totals">
+        <div class="rep-mini-num"><div class="big" id="rep-adultos">0</div><div class="lbl">Adultos</div></div>
+        <div class="rep-mini-num"><div class="big" id="rep-menores">0</div><div class="lbl">Menores</div></div>
+        <div class="rep-mini-num"><div class="big" id="rep-atendidos">0</div><div class="lbl">Atendidos</div></div>
+        <div class="rep-mini-num"><div class="big" id="rep-espera">0</div><div class="lbl">Sala de espera</div></div>
+      </div>
+      <table class="rep-mini-table">
+        <thead><tr>
+          <th>Área</th>
+          <th class="num">Adulto</th>
+          <th class="num">Menor</th>
+          <th class="num">Atendidos</th>
+          <th class="num">Sala de espera</th>
+        </tr></thead>
+        <tbody id="rep-tbody"></tbody>
+      </table>
+    </div>
+
+    <!-- Tabla principal -->
+    <div class="table-container">
+      <div class="table-toolbar">
+        <span class="table-toolbar-title">Registro de pacientes — Admisión Urgencias</span>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <select id="f-estado" onchange="applyFilters()" style="padding:6px 10px;border:1px solid var(--gris-borde);border-radius:var(--radio);font-size:12px;background:var(--bg);">
+            <option value="">Todos los estados</option>
+            <option>Sala de espera</option>
+            <option>Atendido</option>
+            <option>Se retiró</option>
+          </select>
+          <input class="search-input" id="search" type="text" placeholder="Buscar nombre, RFC…" oninput="applyFilters()"/>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <colgroup>
+            <col style="width:32px">
+            <col style="width:148px">
+            <col style="width:76px">
+            <col style="width:28px">
+            <col style="width:38px">
+            <col style="width:52px">
+            <col style="width:52px">
+            <col style="width:46px">
+            <col style="width:160px">
+            <col style="width:32px">
+            <col style="width:110px">
+            <col style="width:90px">
+            <col style="width:76px">
+            <col style="width:80px">
+          </colgroup>
+          <thead><tr>
+            <th class="col-cama">No.</th>
+            <th>Nombre</th>
+            <th>RFC/Cédula</th>
+            <th>Tipo DH</th>
+            <th>Edad</th>
+            <th>Men/Adult</th>
+            <th>Hora</th>
+            <th>Llegada</th>
+            <th>Síntomas</th>
+            <th>Cons.</th>
+            <th>Doctor</th>
+            <th>Área</th>
+            <th>Estado</th>
+            <th id="th-accion">Acción</th>
+          </tr></thead>
+          <tbody id="tbody">
+            <tr><td colspan="14"><div class="loading"><div class="spinner"></div> Cargando…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL NUEVO/EDITAR PACIENTE -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" style="max-width:560px;">
+    <div class="modal-title" id="modal-title">Registrar paciente</div>
+
+    <!-- Opciones: vincular o nuevo -->
+    <div id="modal-opciones" style="display:flex;gap:10px;margin-bottom:16px;">
+      <button class="btn btn-primary" style="flex:1;" onclick="showVincular()">🔗 Vincular de Urgencias</button>
+      <button class="btn" style="flex:1;" onclick="showNuevo()">✏️ Capturar manualmente</button>
+    </div>
+
+    <!-- Formulario paciente -->
+    <div id="modal-form" style="display:none;">
+      <div class="field-row">
+        <div class="field">
+          <label>Nombre del paciente</label>
+          <input type="text" id="m-nombre" placeholder="Apellido Paterno Materno Nombre"/>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>RFC / Cédula</label><input type="text" id="m-rfc" placeholder="XXXX000000"/></div>
+        <div class="field"><label>Tipo DH</label>
+          <select id="m-tipo">
+            <option value="">—</option>
+            <option>10</option><option>20</option><option>30</option><option>31</option>
+            <option>40</option><option>41</option><option>50</option><option>51</option>
+            <option>60</option><option>61</option><option>70</option><option>71</option>
+            <option>80</option><option>81</option><option>90</option><option>91</option>
+          </select>
+        </div>
+        <div class="field" style="flex:0 0 80px;"><label>Edad</label><input type="number" id="m-edad" min="0" max="120"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Hora de llegada</label><input type="time" id="m-hora"/></div>
+        <div class="field"><label>Forma de llegada</label>
+          <select id="m-llegada"><option>Deambulando</option><option>Ambulancia</option></select>
+        </div>
+      </div>
+      <div class="field"><label>Síntomas / Motivo de consulta</label><textarea id="m-sintomas" style="min-height:60px;"></textarea></div>
+      <div class="field-row">
+        <div class="field"><label>Consultorio</label>
+          <select id="m-cons" onchange="fillMedico()">
+            <option value="">— Elige —</option>
+          </select>
+        </div>
+        <div class="field"><label>Doctor que atiende</label>
+          <input type="text" id="m-medico" readonly style="background:var(--bg);color:var(--texto-2);"/>
+          <input type="hidden" id="m-medico-id"/>
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field"><label>Área</label>
+          <select id="m-area">
+            <option>Urgencias</option>
+            <option>Atención obstétrica</option>
+            <option>Cirugía programada</option>
+          </select>
+        </div>
+        <div class="field"><label>Estado</label>
+          <select id="m-estado">
+            <option>Sala de espera</option>
+            <option>Atendido</option>
+            <option>Se retiró</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-sm" onclick="closeModal()">Cancelar</button>
+        <button class="btn btn-sm btn-primary" onclick="saveModal()">Guardar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VINCULAR -->
+<div class="modal-overlay" id="vincular-overlay">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-title">🔗 Vincular paciente de Urgencias</div>
+    <div style="font-size:12px;color:var(--texto-2);margin-bottom:8px;">Selecciona un paciente del censo de urgencias:</div>
+    <input class="search-input" id="v-search" type="text" placeholder="Buscar nombre…" oninput="filterVincular()" style="width:100%;margin-bottom:8px;"/>
+    <div class="vincular-grid" id="vincular-grid">
+      <div class="loading"><div class="spinner"></div></div>
+    </div>
+    <div style="margin-top:10px;">
+      <button class="btn btn-sm" onclick="closeVincular()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+<script>
+let currentUser=null, allRows=[], medicosData=[], editingId=null, urgPacientes=[];
+
+const ROLES_ADMISION=['admin','medico_operativo','ventanilla_admision','jefa_enfermeria'];
+const ROLES_SOLO_ADMISION=['ventanilla_admision'];
+
+// Fecha hoy
+(function(){
+  const d=new Date();
+  const dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  document.getElementById('fecha-hoy').textContent=`${dias[d.getDay()]}, ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+  document.getElementById('fecha-turno').value=d.toISOString().split('T')[0];
+})();
+
+(async()=>{
+  try{
+    currentUser=await requireAuth();
+    if(!currentUser)return;
+    renderHeader(currentUser);
+
+    // Ventanilla de admisión: ocultar sidebar excepto admisión
+    if(currentUser.rol==='ventanilla_admision'){
+      document.querySelectorAll('.sidebar-item:not([href="admision_urgencias.html"])').forEach(el=>el.style.display='none');
+      document.querySelectorAll('.sidebar-section').forEach(el=>el.style.display='none');
+    }
+
+    const canEdit=ROLES_ADMISION.includes(currentUser.rol);
+    if(!canEdit){
+      document.getElementById('th-accion').style.display='none';
+      document.querySelector('.turno-panel-actions').style.display='none';
+    }
+
+    await Promise.all([loadMedicos(), loadAdmision()]);
+  }catch(err){
+    console.error(err);
+    document.getElementById('tbody').innerHTML='<tr><td colspan="14" style="text-align:center;padding:2rem;color:#c00">Error al iniciar.</td></tr>';
+  }
+})();
+
+async function loadMedicos(){
+  const{data,error}=await db.from('medicos').select('*').eq('activo',true).order('consultorio');
+  if(error)return;
+  medicosData=data||[];
+  renderMedicosPanel();
+  fillConsSelect();
+}
+
+function renderMedicosPanel(){
+  const grid=document.getElementById('medicos-grid');
+  if(!medicosData.length){grid.innerHTML='<div style="font-size:12px;color:var(--texto-3);">Sin médicos registrados</div>';return;}
+  const counts={};
+  allRows.forEach(r=>{if(r.medico_id&&r.estado==='Atendido')counts[r.medico_id]=(counts[r.medico_id]||0)+1;});
+  grid.innerHTML=medicosData.map(m=>`
+    <div class="medico-card">
+      <div class="cons-badge">${m.consultorio}</div>
+      <div>
+        <div style="font-weight:500;">${m.nombre}</div>
+        <div class="medico-count">Pacientes atendidos: ${counts[m.id]||0}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function fillConsSelect(){
+  const sel=document.getElementById('m-cons');
+  sel.innerHTML='<option value="">— Elige consultorio —</option>';
+  medicosData.forEach(m=>{
+    sel.innerHTML+=`<option value="${m.id}" data-nombre="${m.nombre}">Consultorio ${m.consultorio} — ${m.nombre}</option>`;
+  });
+}
+
+function fillMedico(){
+  const sel=document.getElementById('m-cons');
+  const opt=sel.options[sel.selectedIndex];
+  document.getElementById('m-medico').value=opt.dataset.nombre||'';
+  document.getElementById('m-medico-id').value=sel.value||'';
+}
+
+async function loadAdmision(){
+  const{data,error}=await db.from('admision_urgencias').select('*').order('numero',{ascending:true});
+  if(error){showToast('Error: '+error.message,'error');return;}
+  allRows=data||[];
+  applyFilters();
+  updateReporte();
+  renderMedicosPanel();
+}
+
+function updateReporte(){
+  const areas=['Urgencias','Atención obstétrica','Cirugía programada'];
+  let totalAdultos=0,totalMenores=0,totalAtendidos=0,totalEspera=0;
+  const repRows=areas.map(area=>{
+    const rows=allRows.filter(r=>r.area===area);
+    const adultos=rows.filter(r=>r.menor_adulto==='Adulto').length;
+    const menores=rows.filter(r=>r.menor_adulto==='Menor').length;
+    const atendidos=rows.filter(r=>r.estado==='Atendido').length;
+    const espera=rows.filter(r=>r.estado==='Sala de espera').length;
+    totalAdultos+=adultos; totalMenores+=menores;
+    totalAtendidos+=atendidos; totalEspera+=espera;
+    return{area,adultos,menores,atendidos,espera};
+  });
+  document.getElementById('rep-adultos').textContent=totalAdultos;
+  document.getElementById('rep-menores').textContent=totalMenores;
+  document.getElementById('rep-atendidos').textContent=totalAtendidos;
+  document.getElementById('rep-espera').textContent=totalEspera;
+  document.getElementById('rep-tbody').innerHTML=repRows.map(r=>`
+    <tr>
+      <td>${r.area}</td>
+      <td class="num">${r.adultos}</td>
+      <td class="num">${r.menores}</td>
+      <td class="num">${r.atendidos}</td>
+      <td class="num">${r.espera}</td>
+    </tr>
+  `).join('');
+}
+
+function applyFilters(){
+  const q=(document.getElementById('search').value||'').toLowerCase();
+  const est=document.getElementById('f-estado').value;
+  const filtered=allRows.filter(r=>
+    (!est||r.estado===est)&&
+    (!q||(r.nombre_paciente||'').toLowerCase().includes(q)||(r.rfc_cedula||'').toLowerCase().includes(q))
+  );
+  renderTable(filtered);
+}
+
+function estadoPill(e){
+  const m={'Sala de espera':'ep-espera','Atendido':'ep-atendido','Se retiró':'ep-retirado'};
+  return `<span class="estado-pill ${m[e]||''}">${e||''}</span>`;
+}
+function areaPill(a){
+  const m={'Urgencias':'ap-urg','Atención obstétrica':'ap-obs','Cirugía programada':'ap-cx'};
+  return `<span class="area-pill ${m[a]||''}">${a||''}</span>`;
+}
+
+function renderTable(rows){
+  const canEdit=currentUser&&ROLES_ADMISION.includes(currentUser.rol);
+  const tbody=document.getElementById('tbody');
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="14" style="text-align:center;padding:24px;color:var(--texto-3);">Sin pacientes registrados</td></tr>';return;}
+  tbody.innerHTML=rows.map(r=>`
+    <tr>
+      <td class="col-cama" style="font-family:'IBM Plex Mono',monospace;font-weight:700;color:var(--azul);">${r.numero||''}</td>
+      <td style="font-size:11px;font-weight:500;">${r.nombre_paciente||''}</td>
+      <td style="font-size:10px;font-family:'IBM Plex Mono',monospace;">${r.rfc_cedula||''}</td>
+      <td style="text-align:center;">${r.tipo_dh||''}</td>
+      <td style="text-align:center;">${r.edad||''}</td>
+      <td style="text-align:center;font-size:11px;">${r.menor_adulto||''}</td>
+      <td style="text-align:center;font-size:11px;">${r.hora_llegada||''}</td>
+      <td style="font-size:11px;">${r.llegada||''}</td>
+      <td title="${r.sintomas||''}" style="font-size:10px;">${trunc(r.sintomas,30)}</td>
+      <td style="text-align:center;">${r.num_consultorio||''}</td>
+      <td style="font-size:11px;">${r.medico_nombre||''}</td>
+      <td>${areaPill(r.area)}</td>
+      <td>${estadoPill(r.estado)}</td>
+      <td style="display:${canEdit?'':'none'}">
+        ${canEdit?`<button class="btn btn-sm" onclick="openModalEditar('${r.id}')">Editar</button>`:''}
+      </td>
+    </tr>
+  `).join('');
+}
+
+// ── MODAL NUEVO ──
+function openModalNuevo(){
+  editingId=null;
+  document.getElementById('modal-title').textContent='Registrar paciente';
+  document.getElementById('modal-opciones').style.display='flex';
+  document.getElementById('modal-form').style.display='none';
+  clearForm();
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function openModalEditar(id){
+  const r=allRows.find(x=>x.id===id);
+  if(!r)return;
+  editingId=id;
+  document.getElementById('modal-title').textContent=`Editar — ${r.nombre_paciente}`;
+  document.getElementById('modal-opciones').style.display='none';
+  document.getElementById('modal-form').style.display='block';
+  document.getElementById('m-nombre').value=r.nombre_paciente||'';
+  document.getElementById('m-rfc').value=r.rfc_cedula||'';
+  document.getElementById('m-tipo').value=r.tipo_dh||'';
+  document.getElementById('m-edad').value=r.edad||'';
+  document.getElementById('m-hora').value=r.hora_llegada||'';
+  document.getElementById('m-llegada').value=r.llegada||'Deambulando';
+  document.getElementById('m-sintomas').value=r.sintomas||'';
+  document.getElementById('m-cons').value=r.medico_id||'';
+  document.getElementById('m-medico').value=r.medico_nombre||'';
+  document.getElementById('m-medico-id').value=r.medico_id||'';
+  document.getElementById('m-area').value=r.area||'Urgencias';
+  document.getElementById('m-estado').value=r.estado||'Sala de espera';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function showNuevo(){
+  document.getElementById('modal-opciones').style.display='none';
+  document.getElementById('modal-form').style.display='block';
+  // Auto hora actual
+  const now=new Date();
+  document.getElementById('m-hora').value=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+}
+
+function showVincular(){
+  document.getElementById('modal-overlay').classList.remove('open');
+  openVincular();
+}
+
+function clearForm(){
+  ['m-nombre','m-rfc','m-sintomas','m-medico'].forEach(id=>document.getElementById(id).value='');
+  ['m-tipo','m-cons','m-medico-id'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('m-edad').value='';
+  document.getElementById('m-llegada').value='Deambulando';
+  document.getElementById('m-area').value='Urgencias';
+  document.getElementById('m-estado').value='Sala de espera';
+}
+
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');editingId=null;}
+
+async function saveModal(){
+  const nombre=document.getElementById('m-nombre').value.trim();
+  if(!nombre){showToast('El nombre es obligatorio','error');return;}
+  const medicoId=document.getElementById('m-medico-id').value||null;
+  const medicoNombre=document.getElementById('m-medico').value||null;
+  const consVal=document.getElementById('m-cons').value;
+  const consNum=consVal?medicosData.find(m=>m.id===consVal)?.consultorio:null;
+
+  const payload={
+    fecha:       document.getElementById('fecha-turno').value||new Date().toISOString().split('T')[0],
+    turno:       document.getElementById('turno').value,
+    responsable: document.getElementById('responsable').value||null,
+    nombre_paciente: nombre,
+    rfc_cedula:  document.getElementById('m-rfc').value.trim()||null,
+    tipo_dh:     document.getElementById('m-tipo').value||null,
+    edad:        parseInt(document.getElementById('m-edad').value)||null,
+    hora_llegada:document.getElementById('m-hora').value||null,
+    llegada:     document.getElementById('m-llegada').value,
+    sintomas:    document.getElementById('m-sintomas').value.trim()||null,
+    num_consultorio: consNum,
+    medico_id:   medicoId,
+    medico_nombre: medicoNombre,
+    area:        document.getElementById('m-area').value,
+    estado:      document.getElementById('m-estado').value,
+  };
+
+  let error;
+  if(editingId){
+    ({error}=await db.from('admision_urgencias').update(payload).eq('id',editingId));
+  }else{
+    ({error}=await db.from('admision_urgencias').insert(payload));
+  }
+  if(error)showToast('Error: '+error.message,'error');
+  else{showToast('Guardado','success');closeModal();await loadAdmision();}
+}
+
+// ── VINCULAR DESDE URGENCIAS ──
+async function openVincular(){
+  document.getElementById('v-search').value='';
+  document.getElementById('vincular-overlay').classList.add('open');
+  const{data,error}=await db.from('camas_urgencias').select('id,numero_cama,nombre_paciente,cedula,tipo_dh,edad').not('nombre_paciente','is',null);
+  if(error||!data){document.getElementById('vincular-grid').innerHTML='<p style="color:#c00;font-size:12px;">Error al cargar</p>';return;}
+  urgPacientes=data;
+  renderVincular(urgPacientes);
+}
+
+function filterVincular(){
+  const q=document.getElementById('v-search').value.toLowerCase();
+  renderVincular(urgPacientes.filter(p=>(p.nombre_paciente||'').toLowerCase().includes(q)));
+}
+
+function renderVincular(list){
+  const grid=document.getElementById('vincular-grid');
+  if(!list.length){grid.innerHTML='<p style="font-size:12px;color:var(--texto-3);">Sin pacientes en urgencias</p>';return;}
+  grid.innerHTML=list.map(p=>`
+    <div class="vincular-item" onclick="seleccionarVincular('${p.nombre_paciente}','${p.cedula||''}','${p.tipo_dh||''}',${p.edad||0})">
+      <div class="vi-nombre">${p.nombre_paciente}</div>
+      <div class="vi-datos">Cama: ${p.numero_cama} · Cédula: ${p.cedula||'—'} · Tipo: ${p.tipo_dh||'—'} · Edad: ${p.edad||'—'}</div>
+    </div>
+  `).join('');
+}
+
+function seleccionarVincular(nombre,cedula,tipo,edad){
+  closeVincular();
+  document.getElementById('modal-opciones').style.display='none';
+  document.getElementById('modal-form').style.display='block';
+  document.getElementById('m-nombre').value=nombre;
+  document.getElementById('m-rfc').value=cedula;
+  document.getElementById('m-tipo').value=tipo;
+  document.getElementById('m-edad').value=edad||'';
+  const now=new Date();
+  document.getElementById('m-hora').value=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeVincular(){document.getElementById('vincular-overlay').classList.remove('open');}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeVincular();}});
+document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
+document.getElementById('vincular-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('vincular-overlay'))closeVincular();});
+</script>
+</body>
+</html>

@@ -1,4 +1,14 @@
-const SUPABASE_URL = 'https://zvhtkwaftophzzjlgnwd.supabase.co';
+/* ================================================================
+   supabase.js — Configuración de Supabase
+   
+   INSTRUCCIONES:
+   1. Ve a https://supabase.com y crea un proyecto gratis
+   2. En tu proyecto: Settings → API
+   3. Copia "Project URL" y pégalo en SUPABASE_URL
+   4. Copia "anon public" key y pégalo en SUPABASE_ANON_KEY
+   ================================================================ */
+
+const SUPABASE_URL      = 'https://zvhtkwaftophzzjlgnwd.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp2aHRrd2FmdG9waHp6amxnbndkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc4Mzk0MjAsImV4cCI6MjA5MzQxNTQyMH0.5r3J66MMg2sK5AKJAdSEETDfDxlQrbI0bO10W2dfR3Q';
 
 /* Carga el cliente de Supabase desde CDN.
@@ -64,15 +74,30 @@ function showToast(msg, type = '') {
 
 /* ── RENDER HEADER ── */
 function renderHeader(user) {
-  const badgeClass = { admin: 'badge-admin', editor: 'badge-editor', viewer: 'badge-viewer' };
+  const rolLabels = {
+    admin:'Administrador', editor:'Editor', viewer:'Visor',
+    medico_operativo:'Médico Operativo', jefa_enfermeria:'Jefa de Enfermería',
+    ventanilla_admision:'Ventanilla Admisión', director:'Director', subdirector:'Subdirector'
+  };
+  const badgeClass = {
+    admin:'badge-admin', editor:'badge-editor', viewer:'badge-viewer',
+    medico_operativo:'badge-editor', jefa_enfermeria:'badge-editor',
+    ventanilla_admision:'badge-viewer', director:'badge-admin', subdirector:'badge-admin'
+  };
   document.getElementById('hdr-user').textContent  = user.nombre;
-  document.getElementById('hdr-badge').textContent = user.rol.charAt(0).toUpperCase() + user.rol.slice(1);
+  document.getElementById('hdr-badge').textContent = rolLabels[user.rol] || user.rol;
   document.getElementById('hdr-badge').className   = `badge ${badgeClass[user.rol] || 'badge-viewer'}`;
   if (user.rol !== 'admin') {
     const adminLink = document.getElementById('nav-admin');
     if (adminLink) adminLink.style.display = 'none';
     const adminSec = document.getElementById('nav-admin-sec');
     if (adminSec) adminSec.style.display = 'none';
+  }
+  if (user.rol === 'ventanilla_admision') {
+    document.querySelectorAll('.sidebar-item').forEach(el => {
+      if (!el.getAttribute('href')?.includes('admision_urgencias')) el.style.display = 'none';
+    });
+    document.querySelectorAll('.sidebar-section').forEach(el => el.style.display = 'none');
   }
 }
 

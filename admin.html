@@ -1,21 +1,26 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Administrador — Sistema Hospitalario</title>
-  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="styles.css"/>
+  <style>
+    .header-date{font-size:12px;color:var(--texto-2);background:var(--bg);border:1px solid var(--gris-borde);border-radius:var(--radio);padding:4px 10px;}
+    .tab-btns{display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--gris-borde);padding-bottom:0;}
+    .tab-btn{padding:8px 16px;border:none;background:transparent;font-size:13px;font-weight:500;color:var(--texto-2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;}
+    .tab-btn.active{color:var(--azul);border-bottom-color:var(--azul);}
+    .tab-content{display:none;} .tab-content.active{display:block;}
+  </style>
 </head>
 <body>
 
 <header class="header">
   <div class="header-left">
-    <div class="logo-sq">
-      <svg viewBox="0 0 18 18" fill="none"><rect x="8" y="2" width="2" height="14" rx="1" fill="white"/><rect x="2" y="8" width="14" height="2" rx="1" fill="white"/></svg>
-    </div>
-    <div><div class="header-title">Sistema Hospitalario</div></div>
+    <img src="logo_issste.png" alt="ISSSTE" style="height:36px;object-fit:contain;"/>
   </div>
   <div class="header-right">
+    <span class="header-date" id="fecha-hoy"></span>
     <span id="hdr-user" style="font-size:12px;color:var(--texto-2);"></span>
     <span id="hdr-badge" class="badge badge-admin">Admin</span>
     <button class="btn btn-sm" onclick="logout()">Salir</button>
@@ -25,188 +30,276 @@
 <div class="app-layout">
   <nav class="sidebar">
     <div class="sidebar-section">Servicios</div>
-    <a class="sidebar-item" href="hospitalizacion.html">
-      <span class="sidebar-dot" style="background:#185FA5;"></span>Hospitalización
-    </a>
-    <a class="sidebar-item" href="urgencias.html">
-      <span class="sidebar-dot" style="background:#E24B4A;"></span>Urgencias
-    </a>
+    <a class="sidebar-item" href="hospitalizacion.html"><span class="sidebar-dot" style="background:#185FA5;"></span>Hospitalización</a>
+    <a class="sidebar-item" href="urgencias.html"><span class="sidebar-dot" style="background:#E24B4A;"></span>Urgencias</a>
+    <div class="sidebar-section">Egresos</div>
+    <a class="sidebar-item" href="egresos_hospital.html"><span class="sidebar-dot" style="background:#22c55e;"></span>Egresos Hospital</a>
+    <a class="sidebar-item" href="egresos_urgencias.html"><span class="sidebar-dot" style="background:#f59e0b;"></span>Egresos Urgencias</a>
+    <div class="sidebar-section">Admisión</div>
+    <a class="sidebar-item" href="admision_urgencias.html"><span class="sidebar-dot" style="background:#E24B4A;"></span>Admisión Urgencias</a>
+    <div class="sidebar-section">Informes</div>
+    <a class="sidebar-item" href="reporte.html"><span class="sidebar-dot" style="background:#6366f1;"></span>Reporte</a>
     <div class="sidebar-section" id="nav-admin-sec">Sistema</div>
-    <a class="sidebar-item active" id="nav-admin" href="admin.html">
-      <span class="sidebar-dot" style="background:#854F0B;"></span>Administrador
-    </a>
+    <a class="sidebar-item active" id="nav-admin" href="admin.html"><span class="sidebar-dot" style="background:#854F0B;"></span>Administrador</a>
   </nav>
 
   <main class="main">
+    <div style="max-width:780px;">
 
-    <!-- USUARIOS -->
-    <div style="max-width:700px;">
-      <div class="section-title">Usuarios del sistema</div>
-      <div id="users-list">
-        <div class="loading"><div class="spinner"></div> Cargando usuarios…</div>
+      <!-- TABS -->
+      <div class="tab-btns">
+        <button class="tab-btn active" onclick="showTab('usuarios',this)">👥 Usuarios</button>
+        <button class="tab-btn" onclick="showTab('medicos',this)">🩺 Médicos</button>
+        <button class="tab-btn" onclick="showTab('permisos',this)">🔐 Permisos por rol</button>
       </div>
 
-      <!-- FORM NUEVO USUARIO -->
-      <div class="add-user-form">
-        <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--texto);">Agregar nuevo usuario</div>
-        <div class="field-row">
-          <div class="field"><label>Nombre completo</label><input type="text" id="nu-nombre" placeholder="Dr. Nombre Apellido" /></div>
-          <div class="field"><label>Correo electrónico</label><input type="email" id="nu-email" placeholder="correo@hospital.mx" /></div>
-        </div>
-        <div class="field-row">
-          <div class="field"><label>Contraseña temporal</label><input type="password" id="nu-pass" placeholder="Mínimo 8 caracteres" /></div>
-          <div class="field">
-            <label>Rol</label>
+      <!-- TAB: USUARIOS -->
+      <div class="tab-content active" id="tab-usuarios">
+        <div class="section-title">Usuarios del sistema</div>
+        <div id="users-list"><div class="loading"><div class="spinner"></div> Cargando…</div></div>
+
+        <div class="add-user-form" style="margin-top:14px;">
+          <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--texto);">Agregar nuevo usuario</div>
+          <div class="form-row">
+            <input type="text" id="nu-nombre" placeholder="Nombre completo"/>
+            <input type="email" id="nu-email" placeholder="correo@hospital.mx"/>
+          </div>
+          <div class="form-row">
+            <input type="password" id="nu-pass" placeholder="Contraseña (mín. 8 caracteres)"/>
             <select id="nu-rol">
               <option value="viewer">Visor — solo lectura</option>
-              <option value="editor">Editor — puede editar camas</option>
+              <option value="editor">Editor — edita camas</option>
+              <option value="medico_operativo">Médico Operativo — edita censos</option>
+              <option value="jefa_enfermeria">Jefa de Enfermería — edita censos</option>
+              <option value="ventanilla_admision">Ventanilla de Admisión</option>
+              <option value="director">Director</option>
+              <option value="subdirector">Subdirector</option>
               <option value="admin">Administrador — acceso total</option>
             </select>
           </div>
+          <button class="btn-sm-primary" onclick="createUser()">Crear usuario</button>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="createUser()">Crear usuario</button>
       </div>
 
-      <!-- PERMISOS -->
-      <div style="margin-top:28px;">
+      <!-- TAB: MÉDICOS -->
+      <div class="tab-content" id="tab-medicos">
+        <div class="section-title">Médicos registrados</div>
+        <div id="medicos-list"><div class="loading"><div class="spinner"></div> Cargando…</div></div>
+
+        <div class="add-user-form" style="margin-top:14px;">
+          <div style="font-size:13px;font-weight:600;margin-bottom:12px;color:var(--texto);">Agregar médico</div>
+          <div class="form-row">
+            <input type="text" id="nm-nombre" placeholder="Nombre del médico (ej. DRA. ANDREA)"/>
+            <input type="number" id="nm-cons" placeholder="Consultorio (1, 2, 3…)" min="1" max="20" style="max-width:160px;"/>
+          </div>
+          <button class="btn-sm-primary" onclick="createMedico()">Agregar médico</button>
+        </div>
+      </div>
+
+      <!-- TAB: PERMISOS -->
+      <div class="tab-content" id="tab-permisos">
         <div class="section-title">Permisos por rol</div>
-        <div class="perm-grid">
-          <div class="perm-card">
-            <h4 style="color:var(--azul);">Administrador</h4>
-            <div class="perm-item"><span class="dot-y"></span>Ver camas hospitalizacion</div>
-            <div class="perm-item"><span class="dot-y"></span>Ver camas urgencias</div>
-            <div class="perm-item"><span class="dot-y"></span>Editar camas</div>
-            <div class="perm-item"><span class="dot-y"></span>Agregar pacientes</div>
-            <div class="perm-item"><span class="dot-y"></span>Gestionar usuarios</div>
-          </div>
-          <div class="perm-card">
-            <h4 style="color:var(--verde);">Editor</h4>
-            <div class="perm-item"><span class="dot-y"></span>Ver camas hospitalizacion</div>
-            <div class="perm-item"><span class="dot-y"></span>Ver camas urgencias</div>
-            <div class="perm-item"><span class="dot-y"></span>Editar camas</div>
-            <div class="perm-item"><span class="dot-y"></span>Agregar pacientes</div>
-            <div class="perm-item"><span class="dot-n"></span>Gestionar usuarios</div>
-          </div>
-          <div class="perm-card">
-            <h4 style="color:var(--gris);">Visor</h4>
-            <div class="perm-item"><span class="dot-y"></span>Ver camas hospitalizacion</div>
-            <div class="perm-item"><span class="dot-y"></span>Ver camas urgencias</div>
-            <div class="perm-item"><span class="dot-n"></span>Editar camas</div>
-            <div class="perm-item"><span class="dot-n"></span>Agregar pacientes</div>
-            <div class="perm-item"><span class="dot-n"></span>Gestionar usuarios</div>
-          </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;border-collapse:collapse;font-size:12px;">
+            <thead>
+              <tr style="background:var(--bg);">
+                <th style="padding:8px 10px;text-align:left;border-bottom:1px solid var(--gris-borde);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--texto-2);">Permiso</th>
+                <th style="padding:8px 6px;text-align:center;border-bottom:1px solid var(--gris-borde);font-size:10px;font-weight:700;color:#0C447C;">Admin</th>
+                <th style="padding:8px 6px;text-align:center;border-bottom:1px solid var(--gris-borde);font-size:10px;font-weight:700;color:#27500A;">Editor</th>
+                <th style="padding:8px 6px;text-align:center;border-bottom:1px solid var(--gris-borde);font-size:10px;font-weight:700;color:#5B5BD6;">Médico Op.</th>
+                <th style="padding:8px 6px;text-align:center;border-bottom:1px solid var(--gris-borde);font-size:10px;font-weight:700;color:#C026D3;">Jefa Enf.</th>
+                <th style="padding:8px 6px;text-align:center;border-bottom:1px solid var(--gris-borde);font-size:10px;font-weight:700;color:#E24B4A;">Ventanilla</th>
+                <th style="padding:8px 6px;text-align:center;border-bottom:1px solid var(--gris-borde);font-size:10px;font-weight:700;color:#854F0B;">Director</th>
+                <th style="padding:8px 6px;text-align:center;border-bottom:1px solid var(--gris-borde);font-size:10px;font-weight:700;color:#444441;">Visor</th>
+              </tr>
+            </thead>
+            <tbody id="perm-tbody"></tbody>
+          </table>
         </div>
       </div>
-    </div>
 
+    </div>
   </main>
 </div>
 
 <div class="toast" id="toast"></div>
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script src="supabase.js"></script>
 <script>
-  let currentUser = null;
+let currentUser=null;
 
-  (async () => {
-    currentUser = await requireAuth();
-    if (!currentUser) return;
-    if (currentUser.rol !== 'admin') {
-      alert('No tienes permisos para ver esta página.');
-      window.location.href = 'hospitalizacion.html';
+const PERMISOS=[
+  {label:'Ver camas hospitalización',     admin:1,editor:1,medico:1,enfermeria:1,ventanilla:0,director:1,visor:1},
+  {label:'Editar camas hospitalización',  admin:1,editor:1,medico:1,enfermeria:1,ventanilla:0,director:0,visor:0},
+  {label:'Ver camas urgencias',           admin:1,editor:1,medico:1,enfermeria:1,ventanilla:0,director:1,visor:1},
+  {label:'Editar camas urgencias',        admin:1,editor:1,medico:1,enfermeria:1,ventanilla:0,director:0,visor:0},
+  {label:'Ver admisión urgencias',        admin:1,editor:0,medico:1,enfermeria:1,ventanilla:1,director:1,visor:0},
+  {label:'Editar admisión urgencias',     admin:1,editor:0,medico:1,enfermeria:1,ventanilla:1,director:0,visor:0},
+  {label:'Ver egresos',                   admin:1,editor:1,medico:1,enfermeria:1,ventanilla:0,director:1,visor:1},
+  {label:'Ver reporte',                   admin:1,editor:1,medico:1,enfermeria:1,ventanilla:0,director:1,visor:1},
+  {label:'Recibir reporte diario email',  admin:1,editor:0,medico:0,enfermeria:0,ventanilla:0,director:1,visor:0},
+  {label:'Gestionar usuarios',            admin:1,editor:0,medico:0,enfermeria:0,ventanilla:0,director:0,visor:0},
+  {label:'Gestionar médicos',             admin:1,editor:0,medico:0,enfermeria:0,ventanilla:0,director:0,visor:0},
+];
+
+const dot = v => v
+  ? `<td style="text-align:center;"><span style="color:#22c55e;font-size:16px;">✓</span></td>`
+  : `<td style="text-align:center;"><span style="color:#E24B4A;font-size:14px;">—</span></td>`;
+
+(function(){
+  const d=new Date();
+  const dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  document.getElementById('fecha-hoy').textContent=`${dias[d.getDay()]}, ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+})();
+
+(async()=>{
+  try{
+    currentUser=await requireAuth();
+    if(!currentUser)return;
+    if(currentUser.rol!=='admin'){
+      alert('Solo el administrador puede acceder a esta página.');
+      window.location.href='hospitalizacion.html';
       return;
     }
     renderHeader(currentUser);
-    await loadUsers();
-  })();
+    renderPermisos();
+    await Promise.all([loadUsers(), loadMedicos()]);
+  }catch(err){console.error(err);}
+})();
 
-  async function loadUsers() {
-    const { data, error } = await db
-      .from('usuarios')
-      .select('*')
-      .order('created_at', { ascending: true });
+function showTab(tab, btn){
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c=>c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+}
 
-    if (error) { showToast('Error al cargar usuarios: ' + error.message, 'error'); return; }
+function renderPermisos(){
+  document.getElementById('perm-tbody').innerHTML=PERMISOS.map(p=>`
+    <tr style="border-bottom:1px solid #F1EFE8;">
+      <td style="padding:6px 10px;font-size:12px;color:var(--texto);">${p.label}</td>
+      ${dot(p.admin)}${dot(p.editor)}${dot(p.medico)}${dot(p.enfermeria)}${dot(p.ventanilla)}${dot(p.director)}${dot(p.visor)}
+    </tr>
+  `).join('');
+}
 
-    const list = document.getElementById('users-list');
-    if (!data || !data.length) {
-      list.innerHTML = '<p style="color:var(--texto-3);font-size:13px;">Sin usuarios registrados.</p>';
-      return;
-    }
+// ── USUARIOS ──
+const ROL_LABELS={
+  admin:'Administrador', editor:'Editor', viewer:'Visor',
+  medico_operativo:'Médico Operativo', jefa_enfermeria:'Jefa de Enfermería',
+  ventanilla_admision:'Ventanilla Admisión', director:'Director', subdirector:'Subdirector'
+};
+const ROL_BADGE={
+  admin:'badge-admin', editor:'badge-editor', viewer:'badge-viewer',
+  medico_operativo:'b-medico', jefa_enfermeria:'b-enfermeria',
+  ventanilla_admision:'b-ventanilla', director:'b-director', subdirector:'b-subdirector'
+};
 
-    const badgeCls = { admin: 'badge-admin', editor: 'badge-editor', viewer: 'badge-viewer' };
-    const avCls    = { admin: 'av-admin',    editor: 'av-editor',    viewer: 'av-viewer' };
-    const rolLabel = { admin: 'Administrador', editor: 'Editor', viewer: 'Visor' };
-    const initials = n => n ? n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase() : '?';
-
-    list.innerHTML = data.map(u => `
-      <div class="user-card">
-        <div class="user-info">
-          <div class="user-avatar ${avCls[u.rol]||'av-viewer'}">${initials(u.nombre)}</div>
-          <div>
-            <div class="user-name">${u.nombre}</div>
-            <div class="user-email">${u.email}</div>
-          </div>
-        </div>
-        <div class="user-actions">
-          <span class="badge ${badgeCls[u.rol]||'badge-viewer'}">${rolLabel[u.rol]||u.rol}</span>
-          ${u.auth_id !== currentUser.auth_id
-            ? `<button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}','${u.auth_id}')">Eliminar</button>`
-            : '<span style="font-size:11px;color:var(--texto-3);">(tú)</span>'}
+async function loadUsers(){
+  const{data,error}=await db.from('usuarios').select('*').order('created_at',{ascending:true});
+  if(error){showToast('Error: '+error.message,'error');return;}
+  const list=document.getElementById('users-list');
+  if(!data||!data.length){list.innerHTML='<p style="color:var(--texto-3);font-size:13px;">Sin usuarios.</p>';return;}
+  const initials=n=>n?n.split(' ').slice(0,2).map(w=>w[0]).join('').toUpperCase():'?';
+  list.innerHTML=data.map(u=>`
+    <div class="user-card">
+      <div class="user-info">
+        <div class="user-avatar av-admin">${initials(u.nombre)}</div>
+        <div>
+          <div class="user-name">${u.nombre}</div>
+          <div class="user-email">${u.email}</div>
         </div>
       </div>
-    `).join('');
+      <div class="user-actions">
+        <span class="badge badge-admin" style="font-size:10px;">${ROL_LABELS[u.rol]||u.rol}</span>
+        ${u.auth_id!==currentUser.auth_id
+          ?`<button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}','${u.auth_id}')">Eliminar</button>`
+          :'<span style="font-size:11px;color:var(--texto-3);">(tú)</span>'}
+      </div>
+    </div>
+  `).join('');
+}
+
+async function createUser(){
+  const nombre=document.getElementById('nu-nombre').value.trim();
+  const email=document.getElementById('nu-email').value.trim();
+  const pass=document.getElementById('nu-pass').value;
+  const rol=document.getElementById('nu-rol').value;
+  if(!nombre||!email||!pass){showToast('Completa todos los campos','error');return;}
+  if(pass.length<8){showToast('Contraseña mínimo 8 caracteres','error');return;}
+  const{data:authData,error:authErr}=await db.auth.admin.createUser({email,password:pass,email_confirm:true});
+  if(authErr){showToast('Error: '+authErr.message,'error');return;}
+  const{error:dbErr}=await db.from('usuarios').insert({auth_id:authData.user.id,nombre,email,rol});
+  if(dbErr){showToast('Error al guardar perfil: '+dbErr.message,'error');}
+  else{
+    showToast('Usuario creado','success');
+    document.getElementById('nu-nombre').value='';
+    document.getElementById('nu-email').value='';
+    document.getElementById('nu-pass').value='';
+    await loadUsers();
   }
+}
 
-  async function createUser() {
-    const nombre = document.getElementById('nu-nombre').value.trim();
-    const email  = document.getElementById('nu-email').value.trim();
-    const pass   = document.getElementById('nu-pass').value;
-    const rol    = document.getElementById('nu-rol').value;
+async function deleteUser(id,authId){
+  if(!confirm('¿Seguro que deseas eliminar este usuario?'))return;
+  await db.auth.admin.deleteUser(authId);
+  const{error}=await db.from('usuarios').delete().eq('id',id);
+  if(error)showToast('Error: '+error.message,'error');
+  else{showToast('Eliminado','success');await loadUsers();}
+}
 
-    if (!nombre || !email || !pass) {
-      showToast('Completa todos los campos', 'error'); return;
-    }
-    if (pass.length < 8) {
-      showToast('La contraseña debe tener al menos 8 caracteres', 'error'); return;
-    }
+// ── MÉDICOS ──
+async function loadMedicos(){
+  const{data,error}=await db.from('medicos').select('*').order('consultorio');
+  if(error)return;
+  const list=document.getElementById('medicos-list');
+  if(!data||!data.length){list.innerHTML='<p style="color:var(--texto-3);font-size:13px;">Sin médicos registrados.</p>';return;}
+  list.innerHTML=data.map(m=>`
+    <div class="user-card">
+      <div class="user-info">
+        <div class="user-avatar av-editor" style="background:#EEF4FF;color:#185FA5;border-radius:8px;">${m.consultorio}</div>
+        <div>
+          <div class="user-name">${m.nombre}</div>
+          <div class="user-email">Consultorio ${m.consultorio} · ${m.activo?'Activo':'Inactivo'}</div>
+        </div>
+      </div>
+      <div class="user-actions">
+        <button class="btn btn-sm ${m.activo?'btn-danger':''}" onclick="toggleMedico('${m.id}',${m.activo})">
+          ${m.activo?'Desactivar':'Activar'}
+        </button>
+        <button class="btn btn-sm btn-danger" onclick="deleteMedico('${m.id}')">Eliminar</button>
+      </div>
+    </div>
+  `).join('');
+}
 
-    /* Crea el usuario en Supabase Auth */
-    const { data: authData, error: authErr } = await db.auth.admin.createUser({
-      email, password: pass, email_confirm: true
-    });
-
-    if (authErr) {
-      showToast('Error al crear usuario: ' + authErr.message, 'error'); return;
-    }
-
-    /* Guarda el perfil en la tabla usuarios */
-    const { error: dbErr } = await db.from('usuarios').insert({
-      auth_id: authData.user.id,
-      nombre, email, rol
-    });
-
-    if (dbErr) {
-      showToast('Usuario creado pero error al guardar perfil: ' + dbErr.message, 'error');
-    } else {
-      showToast('Usuario creado correctamente', 'success');
-      document.getElementById('nu-nombre').value = '';
-      document.getElementById('nu-email').value  = '';
-      document.getElementById('nu-pass').value   = '';
-      await loadUsers();
-    }
+async function createMedico(){
+  const nombre=document.getElementById('nm-nombre').value.trim();
+  const cons=parseInt(document.getElementById('nm-cons').value)||0;
+  if(!nombre||!cons){showToast('Nombre y consultorio son obligatorios','error');return;}
+  const{error}=await db.from('medicos').insert({nombre,consultorio:cons});
+  if(error)showToast('Error: '+error.message,'error');
+  else{
+    showToast('Médico agregado','success');
+    document.getElementById('nm-nombre').value='';
+    document.getElementById('nm-cons').value='';
+    await loadMedicos();
   }
+}
 
-  async function deleteUser(id, authId) {
-    if (!confirm('¿Seguro que deseas eliminar este usuario?')) return;
+async function toggleMedico(id,activo){
+  const{error}=await db.from('medicos').update({activo:!activo}).eq('id',id);
+  if(error)showToast('Error','error');
+  else{showToast(activo?'Médico desactivado':'Médico activado','success');await loadMedicos();}
+}
 
-    await db.auth.admin.deleteUser(authId);
-    const { error } = await db.from('usuarios').delete().eq('id', id);
-
-    if (error) { showToast('Error al eliminar: ' + error.message, 'error'); }
-    else { showToast('Usuario eliminado', 'success'); await loadUsers(); }
-  }
+async function deleteMedico(id){
+  if(!confirm('¿Eliminar este médico?'))return;
+  const{error}=await db.from('medicos').delete().eq('id',id);
+  if(error)showToast('Error: '+error.message,'error');
+  else{showToast('Eliminado','success');await loadMedicos();}
+}
 </script>
 </body>
 </html>
