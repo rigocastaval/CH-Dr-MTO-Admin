@@ -146,7 +146,7 @@
     <div class="medicos-panel">
       <div style="display:flex;justify-content:space-between;align-items:center;">
         <div style="font-size:13px;font-weight:600;color:var(--texto);">Médicos por consultorio</div>
-        <div style="font-size:11px;color:var(--texto-3);">El administrador gestiona los médicos en el panel de Administrador</div>
+        <div style="font-size:11px;color:var(--texto-3);">Doble clic en cada consultorio para editar</div>
       </div>
       <div class="medicos-grid" id="medicos-grid">
         <div class="loading"><div class="spinner"></div> Cargando médicos…</div>
@@ -371,18 +371,85 @@ async function loadMedicos(){
 
 function renderMedicosPanel(){
   const grid=document.getElementById('medicos-grid');
-  if(!medicosData.length){grid.innerHTML='<div style="font-size:12px;color:var(--texto-3);">Sin médicos registrados</div>';return;}
   const counts={};
   allRows.forEach(r=>{if(r.medico_id&&r.estado==='Atendido')counts[r.medico_id]=(counts[r.medico_id]||0)+1;});
-  grid.innerHTML=medicosData.map(m=>`
-    <div class="medico-card">
-      <div class="cons-badge">${m.consultorio}</div>
-      <div>
-        <div style="font-weight:500;">${m.nombre}</div>
-        <div class="medico-count">Pacientes atendidos: ${counts[m.id]||0}</div>
+
+  // Siempre mostrar 3 consultorios
+  const slots=[1,2,3];
+  grid.innerHTML=slots.map(num=>{
+    const m=medicosData.find(x=>x.consultorio===num);
+    if(m){
+      return `<div class="medico-card" id="mc-${num}" title="Doble clic para editar"
+        ondblclick="editMedicoCard(${num})"
+        style="cursor:pointer;position:relative;">
+        <div class="cons-badge">${m.consultorio}</div>
+        <div>
+          <div style="font-weight:500;">${m.nombre}</div>
+          <div class="medico-count">Pacientes atendidos: ${counts[m.id]||0}</div>
+        </div>
+        <div style="position:absolute;bottom:4px;right:8px;font-size:9px;color:var(--texto-3);">✏️</div>
+      </div>`;
+    } else {
+      return `<div class="medico-card" id="mc-${num}" title="Doble clic para asignar médico"
+        ondblclick="editMedicoCard(${num})"
+        style="cursor:pointer;border-style:dashed;opacity:.7;">
+        <div class="cons-badge" style="background:var(--gris-borde);color:var(--texto-3);">${num}</div>
+        <div>
+          <div style="color:var(--texto-3);font-size:12px;">— Sin asignar —</div>
+          <div class="medico-count">Doble clic para asignar</div>
+        </div>
+      </div>`;
+    }
+  }).join('');
+}
+
+async function editMedicoCard(num){
+  const m=medicosData.find(x=>x.consultorio===num);
+  const card=document.getElementById(`mc-${num}`);
+
+  // Reemplazar tarjeta por input inline
+  card.innerHTML=`
+    <div class="cons-badge">${num}</div>
+    <div style="flex:1;">
+      <input type="text" id="inline-nombre-${num}"
+        value="${m?m.nombre:''}"
+        placeholder="Nombre del médico"
+        style="width:100%;padding:4px 8px;border:1px solid var(--azul);border-radius:var(--radio);font-size:13px;font-weight:500;"
+        onkeydown="if(event.key==='Enter')saveMedicoCard(${num});if(event.key==='Escape')renderMedicosPanel();"
+        autofocus/>
+      <div style="display:flex;gap:6px;margin-top:6px;">
+        <button class="btn btn-sm btn-primary" style="font-size:10px;padding:3px 8px;" onclick="saveMedicoCard(${num})">Guardar</button>
+        <button class="btn btn-sm" style="font-size:10px;padding:3px 8px;" onclick="renderMedicosPanel()">Cancelar</button>
+        ${m?`<button class="btn btn-sm btn-danger" style="font-size:10px;padding:3px 8px;" onclick="deleteMedicoCard('${m.id}',${num})">Quitar</button>`:''}
       </div>
     </div>
-  `).join('');
+  `;
+  setTimeout(()=>document.getElementById(`inline-nombre-${num}`)?.focus(),50);
+}
+
+async function saveMedicoCard(num){
+  const input=document.getElementById(`inline-nombre-${num}`);
+  const nombre=(input?.value||'').trim();
+  if(!nombre){showToast('Escribe el nombre del médico','error');return;}
+
+  const existente=medicosData.find(x=>x.consultorio===num);
+  let error;
+  if(existente){
+    ({error}=await db.from('medicos').update({nombre}).eq('id',existente.id));
+  } else {
+    ({error}=await db.from('medicos').insert({nombre,consultorio:num,activo:true}));
+  }
+  if(error){showToast('Error: '+error.message,'error');return;}
+  showToast(`Consultorio ${num} actualizado`,'success');
+  await loadMedicos();
+}
+
+async function deleteMedicoCard(id,num){
+  if(!confirm(`¿Quitar médico del consultorio ${num}?`))return;
+  const{error}=await db.from('medicos').delete().eq('id',id);
+  if(error){showToast('Error','error');return;}
+  showToast(`Consultorio ${num} liberado`,'success');
+  await loadMedicos();
 }
 
 function fillConsSelect(){
