@@ -107,6 +107,9 @@
     <a class="sidebar-item" href="egresos_urgencias.html"><span class="sidebar-dot" style="background:#f59e0b;"></span>Egresos Urgencias</a>
     <div class="sidebar-section">Admisión</div>
     <a class="sidebar-item active" href="admision_urgencias.html"><span class="sidebar-dot" style="background:#E24B4A;"></span>Admisión Urgencias</a>
+    <div class="sidebar-section">Enfermería</div>
+    <a class="sidebar-item" href="censo_enfermeria_hospital.html"><span class="sidebar-dot" style="background:#6366f1;"></span>Censo Enf. Hospital</a>
+    <a class="sidebar-item" href="censo_enfermeria_urgencias.html"><span class="sidebar-dot" style="background:#C026D3;"></span>Censo Enf. Urgencias</a>
     <div class="sidebar-section">Informes</div>
     <a class="sidebar-item" href="reporte.html"><span class="sidebar-dot" style="background:#6366f1;"></span>Reporte</a>
     <div class="sidebar-section" id="nav-admin-sec">Sistema</div>
@@ -541,12 +544,48 @@ function renderTable(rows){
       <td style="text-align:center;">${r.num_consultorio||''}</td>
       <td style="font-size:11px;">${r.medico_nombre||''}</td>
       <td>${areaPill(r.area)}</td>
-      <td>${estadoPill(r.estado)}</td>
+      <td id="estado-cell-${r.id}"
+        ${canEdit?`ondblclick="editEstado('${r.id}','${r.estado||''}')" title="Doble clic para cambiar estado" style="cursor:pointer;"`:''}>
+        ${estadoPill(r.estado)}
+      </td>
       <td style="display:${canEdit?'':'none'}">
         ${canEdit?`<button class="btn btn-sm" onclick="openModalEditar('${r.id}')">Editar</button>`:''}
       </td>
     </tr>
   `).join('');
+}
+
+function editEstado(id, estadoActual){
+  const cell=document.getElementById(`estado-cell-${id}`);
+  if(!cell) return;
+  const opciones=['Sala de espera','Atendido','Se retiró'];
+  cell.innerHTML=`
+    <select id="sel-estado-${id}" style="font-size:11px;padding:2px 5px;border:1px solid var(--azul);border-radius:var(--radio);background:var(--surface);"
+      onchange="saveEstado('${id}',this.value)"
+      onblur="cancelEstado('${id}','${estadoActual}')"
+      onkeydown="if(event.key==='Escape')cancelEstado('${id}','${estadoActual}')">
+      ${opciones.map(o=>`<option value="${o}" ${o===estadoActual?'selected':''}>${o}</option>`).join('')}
+    </select>
+  `;
+  setTimeout(()=>document.getElementById(`sel-estado-${id}`)?.focus(),30);
+}
+
+async function saveEstado(id, nuevoEstado){
+  const{error}=await db.from('admision_urgencias').update({estado:nuevoEstado}).eq('id',id);
+  if(error){showToast('Error: '+error.message,'error');return;}
+  // Actualizar localmente sin recargar toda la tabla
+  const row=allRows.find(r=>r.id===id);
+  if(row) row.estado=nuevoEstado;
+  const cell=document.getElementById(`estado-cell-${id}`);
+  if(cell) cell.innerHTML=estadoPill(nuevoEstado);
+  updateReporte();
+  renderMedicosPanel();
+  showToast('Estado actualizado','success');
+}
+
+function cancelEstado(id, estadoOriginal){
+  const cell=document.getElementById(`estado-cell-${id}`);
+  if(cell) cell.innerHTML=estadoPill(estadoOriginal);
 }
 
 // ── MODAL NUEVO ──

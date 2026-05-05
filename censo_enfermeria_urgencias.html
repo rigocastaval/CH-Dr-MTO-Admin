@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Censo Enfermería Urgencias — Sistema Hospitalario</title>
+  <link rel="stylesheet" href="styles.css"/>
+  <style>
+    .header-date{font-size:12px;color:var(--texto-2);background:var(--bg);border:1px solid var(--gris-borde);border-radius:var(--radio);padding:4px 10px;}
+    .tablero{background:var(--surface);border:1px solid var(--gris-borde);border-radius:var(--radio-lg);padding:14px 18px;margin-bottom:14px;}
+    .tablero-title{font-size:13px;font-weight:700;color:var(--texto);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;}
+    .tablero-table{width:100%;border-collapse:collapse;font-size:11px;}
+    .tablero-table th{background:var(--bg);padding:5px 8px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--texto-2);border:1px solid var(--gris-borde);}
+    .tablero-table th.serv{text-align:left;min-width:120px;}
+    .tablero-table td{padding:4px 8px;border:1px solid var(--gris-borde);text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:var(--texto);}
+    .tablero-table td.serv-label{text-align:left;font-family:var(--font-sans);font-weight:600;font-size:12px;background:var(--bg);}
+    .tablero-table tr.total-row td{background:#EEF4FF;font-weight:700;color:var(--azul);}
+    .tablero-table input.mov-input{width:36px;padding:2px 4px;border:1px solid var(--gris-borde);border-radius:3px;text-align:center;font-size:12px;font-family:'IBM Plex Mono',monospace;background:var(--surface);}
+    .th-group{background:#E6F1FB!important;color:var(--azul-dk)!important;}
+    .turno-bar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+    .turno-btn{padding:6px 16px;border-radius:20px;border:1px solid var(--gris-borde);background:var(--surface);font-size:12px;font-weight:500;cursor:pointer;color:var(--texto-2);transition:all .15s;}
+    .turno-btn.active{background:var(--azul);color:#fff;border-color:var(--azul);}
+    td.col-cama,th.col-cama{position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:2px 0 5px rgba(0,0,0,.07);}
+    thead th.col-cama{background:var(--bg);z-index:3;}
+    .th-group-label{background:#F1EFE8;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--texto-2);text-align:center;padding:3px 4px;border-bottom:1px solid var(--gris-borde);}
+    .chk-ico{font-size:13px;cursor:pointer;display:inline-block;line-height:1;user-select:none;}
+    .chk-ico.off{opacity:.25;}
+    .input-cell{width:100%;border:none;background:transparent;font-size:10px;color:var(--texto);font-family:var(--font-sans);padding:0;outline:none;}
+    .input-cell:focus{background:var(--azul-lt);border-radius:2px;}
+    td.editable{padding:3px 5px;}
+    .save-row-btn{font-size:9px;padding:2px 6px;border:1px solid var(--azul);border-radius:3px;background:var(--azul-lt);color:var(--azul);cursor:pointer;}
+    .save-row-btn:hover{background:var(--azul);color:#fff;}
+    .triaje-R{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:var(--rojo-lt);color:var(--rojo);}
+    .triaje-N{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:#FAEEDA;color:var(--naranja);}
+    .triaje-A{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:#FFF9E6;color:#BA7517;}
+    .triaje-V{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:var(--verde-lt);color:var(--verde);}
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="logo_issste.png" alt="ISSSTE" style="height:36px;object-fit:contain;"/>
+  </div>
+  <div class="header-right">
+    <span class="header-date" id="fecha-hoy"></span>
+    <span id="hdr-user" style="font-size:12px;color:var(--texto-2);"></span>
+    <span id="hdr-badge" class="badge badge-admin">Admin</span>
+    <button class="btn btn-sm" onclick="logout()">Salir</button>
+  </div>
+</header>
+
+<div class="app-layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Servicios</div>
+    <a class="sidebar-item" href="hospitalizacion.html" id="link-hosp"><span class="sidebar-dot" style="background:#185FA5;"></span>Hospitalización</a>
+    <a class="sidebar-item" href="urgencias.html" id="link-urg"><span class="sidebar-dot" style="background:#E24B4A;"></span>Urgencias</a>
+    <div class="sidebar-section">Egresos</div>
+    <a class="sidebar-item" href="egresos_hospital.html"><span class="sidebar-dot" style="background:#22c55e;"></span>Egresos Hospital</a>
+    <a class="sidebar-item" href="egresos_urgencias.html"><span class="sidebar-dot" style="background:#f59e0b;"></span>Egresos Urgencias</a>
+    <div class="sidebar-section">Admisión</div>
+    <a class="sidebar-item" href="admision_urgencias.html"><span class="sidebar-dot" style="background:#E24B4A;"></span>Admisión Urgencias</a>
+    <div class="sidebar-section">Enfermería</div>
+    <a class="sidebar-item" href="censo_enfermeria_hospital.html"><span class="sidebar-dot" style="background:#6366f1;"></span>Censo Enf. Hospital</a>
+    <a class="sidebar-item active" href="censo_enfermeria_urgencias.html"><span class="sidebar-dot" style="background:#C026D3;"></span>Censo Enf. Urgencias</a>
+    <div class="sidebar-section">Informes</div>
+    <a class="sidebar-item" href="reporte.html"><span class="sidebar-dot" style="background:#6366f1;"></span>Reporte</a>
+    <div class="sidebar-section" id="nav-admin-sec">Sistema</div>
+    <a class="sidebar-item" id="nav-admin" href="admin.html"><span class="sidebar-dot" style="background:#854F0B;"></span>Administrador</a>
+  </nav>
+
+  <main class="main">
+    <div class="turno-bar">
+      <div style="font-size:13px;font-weight:600;color:var(--texto);">Censo de Enfermería — Urgencias</div>
+      <div style="display:flex;gap:6px;margin-left:8px;">
+        <button class="turno-btn active" id="tb-M" onclick="setTurno('M',this)">Matutino (M)</button>
+        <button class="turno-btn" id="tb-V" onclick="setTurno('V',this)">Vespertino (V)</button>
+        <button class="turno-btn" id="tb-N" onclick="setTurno('N',this)">Nocturno (N)</button>
+      </div>
+      <input type="date" id="fecha-censo" style="padding:6px 10px;border:1px solid var(--gris-borde);border-radius:var(--radio);font-size:12px;background:var(--bg);"/>
+      <button class="btn btn-sm btn-primary" onclick="guardarTodo()">💾 Guardar todo</button>
+      <button class="btn btn-sm" onclick="window.print()">🖨️ Imprimir</button>
+    </div>
+
+    <!-- TABLERO -->
+    <div class="tablero">
+      <div class="tablero-title">📋 Movimientos Urgencias por turno</div>
+      <div style="overflow-x:auto;">
+        <table class="tablero-table">
+          <thead>
+            <tr>
+              <th class="serv" rowspan="2">Área</th>
+              <th colspan="3" class="th-group">Matutino</th>
+              <th colspan="3" class="th-group">Vespertino</th>
+              <th colspan="3" class="th-group">Nocturno</th>
+            </tr>
+            <tr>
+              <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
+              <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
+              <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
+            </tr>
+          </thead>
+          <tbody id="tablero-tbody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:8px;text-align:right;">
+        <button class="btn btn-sm btn-primary" onclick="guardarTablero()">💾 Guardar tablero</button>
+      </div>
+    </div>
+
+    <!-- TABLA CENSO -->
+    <div class="table-container">
+      <div class="table-toolbar">
+        <span class="table-toolbar-title">Censo de urgencias — Enfermería</span>
+        <input class="search-input" id="search" type="text" placeholder="Buscar paciente…" oninput="renderCenso()"/>
+      </div>
+      <div class="tbl-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="col-cama" rowspan="2" style="min-width:64px;">Cama</th>
+              <th rowspan="2" style="min-width:130px;">Nombre</th>
+              <th rowspan="2" style="min-width:18px;">S</th>
+              <th rowspan="2" style="min-width:28px;">Edad</th>
+              <th rowspan="2" style="min-width:55px;">Triaje</th>
+              <th rowspan="2" style="min-width:150px;">Diagnóstico</th>
+              <th colspan="7" class="th-group-label">Procedimientos</th>
+              <th colspan="3" class="th-group-label">Respiratorio</th>
+              <th colspan="3" class="th-group-label">Líquidos</th>
+              <th colspan="1" class="th-group-label">Medicamento</th>
+              <th colspan="3" class="th-group-label">Notas</th>
+              <th rowspan="2" style="min-width:36px;">Acc.</th>
+            </tr>
+            <tr>
+              <th title="Lab" style="min-width:22px;">🧪</th>
+              <th title="Imagen" style="min-width:22px;">🖼</th>
+              <th title="HemoCultivo" style="min-width:22px;">🩸</th>
+              <th title="RX" style="min-width:22px;">☢️</th>
+              <th title="Curaciones" style="min-width:22px;">🩹</th>
+              <th title="CVC" style="min-width:22px;">💉</th>
+              <th title="VVP/Infusiones" style="min-width:80px;">VVP</th>
+              <th title="VM" style="min-width:22px;">🌬</th>
+              <th title="CPAP" style="min-width:22px;">😷</th>
+              <th title="O2" style="min-width:50px;">O₂</th>
+              <th style="min-width:70px;">Sol.Par.</th>
+              <th style="min-width:50px;">Glucosa</th>
+              <th style="min-width:50px;">Diuresis</th>
+              <th style="min-width:100px;">Antibióticos</th>
+              <th style="min-width:70px;">Interconsulta</th>
+              <th style="min-width:110px;">Cuidados Esp.</th>
+              <th style="min-width:110px;">Pendientes</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="25"><div class="loading"><div class="spinner"></div> Cargando…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+<script>
+let currentUser=null, allRows=[], enfData={}, tableroData={};
+let currentTurno='M', currentFecha='';
+const AREAS_URG=['Urgencias','Pediátrico','Toco/Qx'];
+
+(function(){
+  const d=new Date();
+  const dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  document.getElementById('fecha-hoy').textContent=`${dias[d.getDay()]}, ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+  currentFecha=d.toISOString().split('T')[0];
+  document.getElementById('fecha-censo').value=currentFecha;
+  document.getElementById('fecha-censo').addEventListener('change',e=>{currentFecha=e.target.value;loadAll();});
+})();
+
+(async()=>{
+  try{
+    currentUser=await requireAuth();
+    if(!currentUser)return;
+    if(!['admin','jefa_enfermeria'].includes(currentUser.rol)){
+      alert('No tienes acceso a esta página.');
+      window.location.href='hospitalizacion.html'; return;
+    }
+    renderHeader(currentUser);
+    if(currentUser.rol==='jefa_enfermeria'){
+      document.getElementById('link-hosp').style.display='none';
+      document.getElementById('link-urg').style.display='none';
+    }
+    await loadAll();
+  }catch(err){ console.error(err); }
+})();
+
+function setTurno(t,btn){
+  currentTurno=t;
+  document.querySelectorAll('.turno-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTablero(); renderCenso();
+}
+
+async function loadAll(){
+  const[urgRes,enfRes,tabRes]=await Promise.all([
+    db.from('camas_urgencias').select('*').order('sort_order',{ascending:true}),
+    db.from('censo_enfermeria_urgencias').select('*').eq('fecha',currentFecha),
+    db.from('movimientos_turno').select('*').eq('fecha',currentFecha).in('servicio',AREAS_URG)
+  ]);
+  allRows=urgRes.data||[];
+  enfData={};
+  (enfRes.data||[]).forEach(r=>{enfData[r.cama_id]=r;});
+  tableroData={};
+  (tabRes.data||[]).forEach(r=>{tableroData[`${r.servicio}_${r.turno}`]=r;});
+  renderTablero(); renderCenso();
+}
+
+function renderTablero(){
+  const turnos=['M','V','N'];
+  let html=AREAS_URG.map(area=>{
+    const celdas=turnos.map(t=>{
+      const d=tableroData[`${area}_${t}`]||{recibo:0,ingresos:0,egresos:0};
+      return `
+        <td><input class="mov-input" type="number" min="0" value="${d.recibo||0}" id="mov_${area}_${t}_r"/></td>
+        <td><input class="mov-input" type="number" min="0" value="${d.ingresos||0}" id="mov_${area}_${t}_i"/></td>
+        <td><input class="mov-input" type="number" min="0" value="${d.egresos||0}" id="mov_${area}_${t}_e"/></td>
+      `;
+    }).join('');
+    return `<tr><td class="serv-label">${area}</td>${celdas}</tr>`;
+  }).join('');
+  document.getElementById('tablero-tbody').innerHTML=html;
+}
+
+async function guardarTablero(){
+  const turnos=['M','V','N'];
+  const ops=[];
+  AREAS_URG.forEach(area=>{
+    turnos.forEach(t=>{
+      const r=parseInt(document.getElementById(`mov_${area}_${t}_r`)?.value)||0;
+      const i=parseInt(document.getElementById(`mov_${area}_${t}_i`)?.value)||0;
+      const e=parseInt(document.getElementById(`mov_${area}_${t}_e`)?.value)||0;
+      const existing=tableroData[`${area}_${t}`];
+      if(existing) ops.push(db.from('movimientos_turno').update({recibo:r,ingresos:i,egresos:e,entrego:r+i-e}).eq('id',existing.id));
+      else ops.push(db.from('movimientos_turno').insert({fecha:currentFecha,turno:t,servicio:area,recibo:r,ingresos:i,egresos:e,entrego:r+i-e}));
+    });
+  });
+  await Promise.all(ops);
+  showToast('Tablero guardado','success');
+  await loadAll();
+}
+
+function triClass(t){const m={'Rojo':'R','Naranja':'N','Amarillo':'A','Verde':'V'};return `triaje-${m[t]||'V'}`;}
+function icoChk(val,ico,field,camaId){return `<span class="chk-ico ${val?'':'off'}" onclick="toggleField('${camaId}','${field}')">${ico}</span>`;}
+
+function renderCenso(){
+  const tbody=document.getElementById('tbody');
+  const q=(document.getElementById('search')?.value||'').toLowerCase();
+  const rows=allRows.filter(r=>!q||(r.nombre_paciente||'').toLowerCase().includes(q));
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="25" style="text-align:center;padding:24px;color:var(--texto-3);">Sin camas</td></tr>';return;}
+  tbody.innerHTML=rows.map(r=>{
+    const vacio=!r.nombre_paciente;
+    const e=enfData[r.id]||{};
+    if(vacio) return `<tr style="opacity:.5;"><td class="col-cama"><span class="cama-lbl">${r.numero_cama}</span></td><td colspan="23"><span class="empty-cell">— disponible —</span></td><td></td></tr>`;
+    return `<tr>
+      <td class="col-cama"><span class="cama-lbl">${r.numero_cama}</span></td>
+      <td style="font-size:10px;font-weight:500;" title="${r.nombre_paciente}">${trunc(r.nombre_paciente,18)}</td>
+      <td>${r.sexo||''}</td>
+      <td style="text-align:center;">${r.edad||''}</td>
+      <td><span class="${triClass(r.triaje)}">${r.triaje||''}</span></td>
+      <td title="${r.diagnostico||''}" style="font-size:10px;">${trunc(r.diagnostico,25)}</td>
+      <td style="text-align:center;">${icoChk(e.estudios_lab,'🧪','estudios_lab',r.id)}</td>
+      <td style="text-align:center;">${icoChk(e.estudios_imagen,'🖼','estudios_imagen',r.id)}</td>
+      <td style="text-align:center;">${icoChk(e.hem_cu,'🩸','hem_cu',r.id)}</td>
+      <td style="text-align:center;">${icoChk(e.rx,'☢️','rx',r.id)}</td>
+      <td style="text-align:center;">${icoChk(e.curaciones,'🩹','curaciones',r.id)}</td>
+      <td style="text-align:center;">${icoChk(e.cvc,'💉','cvc',r.id)}</td>
+      <td class="editable"><input class="input-cell" value="${e.infusiones||''}" placeholder="CVP…" onchange="updateField('${r.id}','infusiones',this.value)"/></td>
+      <td style="text-align:center;">${icoChk(e.ventilador_mecanico,'🌬','ventilador_mecanico',r.id)}</td>
+      <td style="text-align:center;">${icoChk(e.cpap,'😷','cpap',r.id)}</td>
+      <td class="editable"><input class="input-cell" value="${e.oxigeno_litros||''}" placeholder="3L" onchange="updateField('${r.id}','oxigeno_litros',this.value)"/></td>
+      <td class="editable"><input class="input-cell" value="${e.soluciones_parenterales||''}" placeholder="SS 500" onchange="updateField('${r.id}','soluciones_parenterales',this.value)"/></td>
+      <td class="editable"><input class="input-cell" value="${e.glucosa||''}" placeholder="PRN" onchange="updateField('${r.id}','glucosa',this.value)"/></td>
+      <td class="editable"><input class="input-cell" value="${e.diuresis||''}" placeholder="1500" onchange="updateField('${r.id}','diuresis',this.value)"/></td>
+      <td class="editable"><input class="input-cell" value="${e.antibioticos||''}" placeholder="Pip+Tazo…" onchange="updateField('${r.id}','antibioticos',this.value)"/></td>
+      <td class="editable"><input class="input-cell" value="${e.inter_consulta||''}" placeholder="Cardio…" onchange="updateField('${r.id}','inter_consulta',this.value)"/></td>
+      <td class="editable"><input class="input-cell" value="${e.cuidados_especiales||''}" placeholder="SVPT…" onchange="updateField('${r.id}','cuidados_especiales',this.value)"/></td>
+      <td class="editable"><input class="input-cell" value="${e.pendientes||''}" placeholder="Pendientes…" onchange="updateField('${r.id}','pendientes',this.value)"/></td>
+      <td><button class="save-row-btn" onclick="saveRow('${r.id}')">💾</button></td>
+    </tr>`;
+  }).join('');
+}
+
+function updateField(camaId,field,value){
+  if(!enfData[camaId]) enfData[camaId]={cama_id:camaId,fecha:currentFecha,turno:currentTurno};
+  enfData[camaId][field]=value;
+}
+
+async function toggleField(camaId,field){
+  if(!enfData[camaId]) enfData[camaId]={cama_id:camaId,fecha:currentFecha,turno:currentTurno};
+  enfData[camaId][field]=!enfData[camaId][field];
+  await saveRow(camaId);
+}
+
+async function saveRow(camaId){
+  const cama=allRows.find(r=>r.id===camaId);
+  if(!cama)return;
+  const existing=enfData[camaId];
+  const payload={
+    ...existing,
+    cama_id:camaId,
+    numero_cama:cama.numero_cama,
+    fecha:currentFecha,
+    turno:currentTurno,
+    nombre_paciente:cama.nombre_paciente,
+    cedula:cama.cedula,
+    edad:cama.edad,
+    sexo:cama.sexo,
+    servicio:cama.servicio,
+    diagnostico:cama.diagnostico,
+    triaje:cama.triaje,
+  };
+  let error;
+  if(existing?.id){
+    ({error}=await db.from('censo_enfermeria_urgencias').update(payload).eq('id',existing.id));
+  } else {
+    const{data,error:e}=await db.from('censo_enfermeria_urgencias').insert(payload).select().single();
+    error=e;
+    if(data) enfData[camaId]={...enfData[camaId],...data};
+  }
+  if(error) showToast('Error: '+error.message,'error');
+  else showToast(`${cama.numero_cama} guardada`,'success');
+}
+
+async function guardarTodo(){
+  for(const c of allRows.filter(r=>r.nombre_paciente)) await saveRow(c.id);
+  showToast('Todo guardado','success');
+}
+</script>
+</body>
+</html>

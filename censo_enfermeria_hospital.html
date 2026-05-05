@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Censo Enfermería Hospital — Sistema Hospitalario</title>
+  <link rel="stylesheet" href="styles.css"/>
+  <style>
+    .header-date{font-size:12px;color:var(--texto-2);background:var(--bg);border:1px solid var(--gris-borde);border-radius:var(--radio);padding:4px 10px;}
+
+    /* ── TABLERO MOVIMIENTOS ── */
+    .tablero{background:var(--surface);border:1px solid var(--gris-borde);border-radius:var(--radio-lg);padding:14px 18px;margin-bottom:14px;}
+    .tablero-title{font-size:13px;font-weight:700;color:var(--texto);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em;}
+    .tablero-grid{overflow-x:auto;}
+    .tablero-table{width:100%;border-collapse:collapse;font-size:11px;min-width:700px;}
+    .tablero-table th{background:var(--bg);padding:5px 8px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--texto-2);border:1px solid var(--gris-borde);}
+    .tablero-table th.serv{text-align:left;min-width:120px;}
+    .tablero-table td{padding:4px 8px;border:1px solid var(--gris-borde);text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:var(--texto);}
+    .tablero-table td.serv-label{text-align:left;font-family:var(--font-sans);font-weight:600;font-size:12px;background:var(--bg);}
+    .tablero-table tr.total-row td{background:#EEF4FF;font-weight:700;color:var(--azul);}
+    .tablero-table input.mov-input{width:36px;padding:2px 4px;border:1px solid var(--gris-borde);border-radius:3px;text-align:center;font-size:12px;font-family:'IBM Plex Mono',monospace;background:var(--surface);}
+    .tablero-table input.mov-input:focus{border-color:var(--azul);outline:none;}
+    .th-group{background:#E6F1FB!important;color:var(--azul-dk)!important;}
+    .td-entrego{background:#EAF3DE;color:var(--verde);font-weight:700;}
+
+    /* Turno selector */
+    .turno-bar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+    .turno-btn{padding:6px 16px;border-radius:20px;border:1px solid var(--gris-borde);background:var(--surface);font-size:12px;font-weight:500;cursor:pointer;color:var(--texto-2);transition:all .15s;}
+    .turno-btn.active{background:var(--azul);color:#fff;border-color:var(--azul);}
+
+    /* ── TABLA CENSO ── */
+    td.col-cama,th.col-cama{position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:2px 0 5px rgba(0,0,0,.07);}
+    thead th.col-cama{background:var(--bg);z-index:3;}
+    .th-group-label{background:#F1EFE8;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--texto-2);text-align:center;padding:3px 4px;border-bottom:1px solid var(--gris-borde);}
+    .chk-ico{font-size:13px;cursor:pointer;display:inline-block;line-height:1;user-select:none;}
+    .chk-ico.off{opacity:.25;}
+    .input-cell{width:100%;border:none;background:transparent;font-size:10px;color:var(--texto);font-family:var(--font-sans);padding:0;outline:none;}
+    .input-cell:focus{background:var(--azul-lt);border-radius:2px;}
+    td.editable{padding:3px 5px;}
+    tr:hover td{background:#FAFAF8;}
+    tr:hover td.col-cama{background:var(--surface);}
+    .save-row-btn{font-size:9px;padding:2px 6px;border:1px solid var(--azul);border-radius:3px;background:var(--azul-lt);color:var(--azul);cursor:pointer;white-space:nowrap;}
+    .save-row-btn:hover{background:var(--azul);color:#fff;}
+    .row-saved{font-size:9px;color:var(--verde);}
+  </style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-left">
+    <img src="logo_issste.png" alt="ISSSTE" style="height:36px;object-fit:contain;"/>
+  </div>
+  <div class="header-right">
+    <span class="header-date" id="fecha-hoy"></span>
+    <span id="hdr-user" style="font-size:12px;color:var(--texto-2);"></span>
+    <span id="hdr-badge" class="badge badge-admin">Admin</span>
+    <button class="btn btn-sm" onclick="logout()">Salir</button>
+  </div>
+</header>
+
+<div class="app-layout">
+  <nav class="sidebar">
+    <div class="sidebar-section">Servicios</div>
+    <a class="sidebar-item" href="hospitalizacion.html" id="link-hosp"><span class="sidebar-dot" style="background:#185FA5;"></span>Hospitalización</a>
+    <a class="sidebar-item" href="urgencias.html" id="link-urg"><span class="sidebar-dot" style="background:#E24B4A;"></span>Urgencias</a>
+    <div class="sidebar-section">Egresos</div>
+    <a class="sidebar-item" href="egresos_hospital.html"><span class="sidebar-dot" style="background:#22c55e;"></span>Egresos Hospital</a>
+    <a class="sidebar-item" href="egresos_urgencias.html"><span class="sidebar-dot" style="background:#f59e0b;"></span>Egresos Urgencias</a>
+    <div class="sidebar-section">Admisión</div>
+    <a class="sidebar-item" href="admision_urgencias.html"><span class="sidebar-dot" style="background:#E24B4A;"></span>Admisión Urgencias</a>
+    <div class="sidebar-section">Enfermería</div>
+    <a class="sidebar-item active" href="censo_enfermeria_hospital.html"><span class="sidebar-dot" style="background:#6366f1;"></span>Censo Enf. Hospital</a>
+    <a class="sidebar-item" href="censo_enfermeria_urgencias.html"><span class="sidebar-dot" style="background:#C026D3;"></span>Censo Enf. Urgencias</a>
+    <div class="sidebar-section">Informes</div>
+    <a class="sidebar-item" href="reporte.html"><span class="sidebar-dot" style="background:#6366f1;"></span>Reporte</a>
+    <div class="sidebar-section" id="nav-admin-sec">Sistema</div>
+    <a class="sidebar-item" id="nav-admin" href="admin.html"><span class="sidebar-dot" style="background:#854F0B;"></span>Administrador</a>
+  </nav>
+
+  <main class="main">
+
+    <!-- SELECTOR TURNO Y FECHA -->
+    <div class="turno-bar">
+      <div style="font-size:13px;font-weight:600;color:var(--texto);">Censo de Enfermería — Hospitalización</div>
+      <div style="display:flex;gap:6px;margin-left:8px;">
+        <button class="turno-btn active" id="tb-M" onclick="setTurno('M',this)">Matutino (M)</button>
+        <button class="turno-btn" id="tb-V" onclick="setTurno('V',this)">Vespertino (V)</button>
+        <button class="turno-btn" id="tb-N" onclick="setTurno('N',this)">Nocturno (N)</button>
+      </div>
+      <input type="date" id="fecha-censo" style="padding:6px 10px;border:1px solid var(--gris-borde);border-radius:var(--radio);font-size:12px;background:var(--bg);"/>
+      <button class="btn btn-sm btn-primary" onclick="guardarTodo()">💾 Guardar todo</button>
+      <button class="btn btn-sm" onclick="window.print()">🖨️ Imprimir</button>
+    </div>
+
+    <!-- TABLERO MOVIMIENTOS -->
+    <div class="tablero">
+      <div class="tablero-title">📋 Movimientos por turno</div>
+      <div class="tablero-grid">
+        <table class="tablero-table">
+          <thead>
+            <tr>
+              <th class="serv" rowspan="2">Servicio</th>
+              <th colspan="3" class="th-group">Matutino</th>
+              <th colspan="3" class="th-group">Vespertino</th>
+              <th colspan="3" class="th-group">Nocturno</th>
+            </tr>
+            <tr>
+              <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
+              <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
+              <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
+            </tr>
+          </thead>
+          <tbody id="tablero-tbody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:8px;text-align:right;">
+        <button class="btn btn-sm btn-primary" onclick="guardarTablero()">💾 Guardar tablero</button>
+      </div>
+    </div>
+
+    <!-- TABLA CENSO ENFERMERÍA -->
+    <div class="table-container">
+      <div class="table-toolbar">
+        <span class="table-toolbar-title">Censo de hospitalización — Enfermería</span>
+        <input class="search-input" id="search" type="text" placeholder="Buscar paciente…" oninput="applyFilters()"/>
+      </div>
+      <div class="tbl-wrap">
+        <table id="censo-table">
+          <!-- Encabezados agrupados -->
+          <thead>
+            <tr>
+              <th class="col-cama" rowspan="2" style="min-width:50px;">Cama</th>
+              <th rowspan="2" style="min-width:30px;">Serv.</th>
+              <th rowspan="2" style="min-width:140px;">Nombre</th>
+              <th rowspan="2" style="min-width:76px;">Cédula</th>
+              <th rowspan="2" style="min-width:28px;">Edad</th>
+              <th rowspan="2" style="min-width:18px;">S</th>
+              <th rowspan="2" style="min-width:160px;">Diagnóstico</th>
+              <th colspan="7" class="th-group-label">Cuatro Paquetes / Procedimientos</th>
+              <th colspan="3" class="th-group-label">Respiratorio</th>
+              <th colspan="4" class="th-group-label">DPCA / Líquidos</th>
+              <th colspan="1" class="th-group-label">Medicamento</th>
+              <th colspan="4" class="th-group-label">Evaluación / Notas</th>
+              <th rowspan="2" style="min-width:44px;">Acción</th>
+            </tr>
+            <tr>
+              <!-- Cuatro paquetes -->
+              <th title="Estudios de Laboratorio" style="min-width:22px;">Lab</th>
+              <th title="Estudios de Imagen" style="min-width:22px;">Img</th>
+              <th title="Hemo-cultivo" style="min-width:22px;">HCu</th>
+              <th title="Radiografía" style="min-width:22px;">RX</th>
+              <th title="Curaciones" style="min-width:22px;">Cur</th>
+              <th title="Catéter Venoso Central" style="min-width:22px;">CVC</th>
+              <th title="Infusiones / VVP" style="min-width:90px;">VVP / Infusiones</th>
+              <!-- Respiratorio -->
+              <th title="Ventilador Mecánico" style="min-width:22px;">VM</th>
+              <th title="CPAP" style="min-width:22px;">CPAP</th>
+              <th title="Oxígeno" style="min-width:50px;">O₂</th>
+              <!-- DPCA -->
+              <th title="Soluciones parenterales" style="min-width:80px;">Sol. Paren.</th>
+              <th title="Glucosa" style="min-width:50px;">Glucosa</th>
+              <th title="Diuresis" style="min-width:50px;">Diuresis</th>
+              <th title="Lactancia" style="min-width:22px;">Lact</th>
+              <!-- Medicamentos -->
+              <th style="min-width:110px;">Antibióticos</th>
+              <!-- Evaluación -->
+              <th style="min-width:70px;">Interconsulta</th>
+              <th title="Baño general" style="min-width:22px;">Baño</th>
+              <th style="min-width:120px;">Cuidados Especiales</th>
+              <th style="min-width:120px;">Pendientes / Obs. Alta</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="27"><div class="loading"><div class="spinner"></div> Cargando…</div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MODAL EDICIÓN DETALLADA -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" style="max-width:620px;">
+    <div class="modal-title" id="modal-title">Editar registro de enfermería</div>
+    <div class="field-row">
+      <div class="field" style="flex:0 0 100px;"><label>Cama</label><input type="text" id="m-cama" readonly style="background:var(--bg);"/></div>
+      <div class="field"><label>Nombre</label><input type="text" id="m-nombre" readonly style="background:var(--bg);"/></div>
+      <div class="field" style="flex:0 0 60px;"><label>Edad</label><input type="text" id="m-edad" readonly style="background:var(--bg);"/></div>
+    </div>
+    <div class="field"><label>Diagnóstico</label><input type="text" id="m-dx" readonly style="background:var(--bg);"/></div>
+
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:12px;padding:10px;background:var(--bg);border-radius:var(--radio);">
+      <label style="font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="m-lab"/> 🧪 Lab</label>
+      <label style="font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="m-img"/> 🖼 Imagen</label>
+      <label style="font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="m-hcu"/> 🩸 HemoCultivo</label>
+      <label style="font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="m-rx"/> ☢️ RX</label>
+      <label style="font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="m-cur"/> 🩹 Curaciones</label>
+      <label style="font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="m-cvc"/> 💉 CVC</label>
+      <label style="font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="m-vm"/> 🌬 Ventilador</label>
+      <label style="font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="m-cpap"/> 😷 CPAP</label>
+      <label style="font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="m-bano"/> 🚿 Baño general</label>
+      <label style="font-size:11px;cursor:pointer;display:flex;align-items:center;gap:4px;"><input type="checkbox" id="m-lact"/> 🤱 Lactancia</label>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>VVP / Infusiones</label><input type="text" id="m-vvp" placeholder="CVP#18 30-04 TM"/></div>
+      <div class="field"><label>O₂ (litros/min)</label><input type="text" id="m-o2" placeholder="3 L/min PRN"/></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Soluciones parenterales</label><input type="text" id="m-sol" placeholder="SS 500 P/24"/></div>
+      <div class="field"><label>Glucosa</label><input type="text" id="m-gluc" placeholder="PRN"/></div>
+      <div class="field"><label>Diuresis</label><input type="text" id="m-diu" placeholder="1500 ml/24h"/></div>
+    </div>
+    <div class="field"><label>Antibióticos / Antimicrobianos</label><textarea id="m-abx" style="min-height:52px;" placeholder="Piperacilina + Tazo 4.5g c/8h IV"></textarea></div>
+    <div class="field-row">
+      <div class="field"><label>Interconsulta</label><input type="text" id="m-ic" placeholder="Cardiología, Nefrología…"/></div>
+      <div class="field"><label>Estado de ánimo</label><input type="text" id="m-ea" placeholder="Tranquilo, ansioso…"/></div>
+    </div>
+    <div class="field"><label>Cuidados especiales</label><textarea id="m-ce" style="min-height:52px;" placeholder="SVPT, CGE, cuidados de C/D…"></textarea></div>
+    <div class="field"><label>Pendientes / Observaciones al alta</label><textarea id="m-pend" style="min-height:52px;"></textarea></div>
+
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-sm btn-primary" onclick="saveModal()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
+<script>
+let currentUser=null, allRows=[], enfData={}, tableroData={}, editingCamaId=null;
+let currentTurno='M', currentFecha='';
+
+const SERVICIOS_TABLERO=['MI','Cx','TyO','GyO','Pedia','UCI'];
+
+(function(){
+  const d=new Date();
+  const dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  document.getElementById('fecha-hoy').textContent=`${dias[d.getDay()]}, ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+  currentFecha=d.toISOString().split('T')[0];
+  document.getElementById('fecha-censo').value=currentFecha;
+  document.getElementById('fecha-censo').addEventListener('change',e=>{currentFecha=e.target.value;loadAll();});
+})();
+
+(async()=>{
+  try{
+    currentUser=await requireAuth();
+    if(!currentUser)return;
+    if(!['admin','jefa_enfermeria'].includes(currentUser.rol)){
+      alert('No tienes acceso a esta página.');
+      window.location.href='hospitalizacion.html';
+      return;
+    }
+    renderHeader(currentUser);
+    // Ocultar censos principales si es jefa_enfermeria
+    if(currentUser.rol==='jefa_enfermeria'){
+      document.getElementById('link-hosp').style.display='none';
+      document.getElementById('link-urg').style.display='none';
+    }
+    await loadAll();
+  }catch(err){
+    console.error(err);
+    document.getElementById('tbody').innerHTML='<tr><td colspan="27" style="text-align:center;padding:2rem;color:#c00">Error al iniciar.</td></tr>';
+  }
+})();
+
+function setTurno(t,btn){
+  currentTurno=t;
+  document.querySelectorAll('.turno-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTablero();
+  renderCenso();
+}
+
+async function loadAll(){
+  const[hospRes, enfRes, tabRes]= await Promise.all([
+    db.from('camas_hospitalizacion').select('*').order('sort_order',{ascending:true}),
+    db.from('censo_enfermeria_hospital').select('*').eq('fecha',currentFecha),
+    db.from('movimientos_turno').select('*').eq('fecha',currentFecha)
+  ]);
+  allRows=hospRes.data||[];
+  // Indexar datos de enfermería por cama_id
+  enfData={};
+  (enfRes.data||[]).forEach(r=>{ enfData[r.cama_id]=r; });
+  // Indexar tablero por servicio+turno
+  tableroData={};
+  (tabRes.data||[]).forEach(r=>{ tableroData[`${r.servicio}_${r.turno}`]=r; });
+  renderTablero();
+  renderCenso();
+}
+
+// ── TABLERO MOVIMIENTOS ──
+function renderTablero(){
+  const turnos=['M','V','N'];
+  const totales={M:{r:0,i:0,e:0},V:{r:0,i:0,e:0},N:{r:0,i:0,e:0}};
+
+  const html=SERVICIOS_TABLERO.map(serv=>{
+    const celdas=turnos.map(t=>{
+      const key=`${serv}_${t}`;
+      const d=tableroData[key]||{recibo:0,ingresos:0,egresos:0};
+      totales[t].r+=d.recibo||0;
+      totales[t].i+=d.ingresos||0;
+      totales[t].e+=d.egresos||0;
+      return `
+        <td><input class="mov-input" type="number" min="0" value="${d.recibo||0}" id="mov_${serv}_${t}_r" onchange="calcTablero('${serv}','${t}')"/></td>
+        <td><input class="mov-input" type="number" min="0" value="${d.ingresos||0}" id="mov_${serv}_${t}_i" onchange="calcTablero('${serv}','${t}')"/></td>
+        <td><input class="mov-input" type="number" min="0" value="${d.egresos||0}" id="mov_${serv}_${t}_e" onchange="calcTablero('${serv}','${t}')"/></td>
+      `;
+    }).join('');
+    return `<tr>
+      <td class="serv-label">${serv}</td>
+      ${celdas}
+    </tr>`;
+  }).join('');
+
+  const totRow=turnos.map(t=>`
+    <td id="tot_${t}_r">${totales[t].r}</td>
+    <td id="tot_${t}_i">${totales[t].i}</td>
+    <td id="tot_${t}_e">${totales[t].e}</td>
+  `).join('');
+
+  document.getElementById('tablero-tbody').innerHTML=html+`
+    <tr class="total-row">
+      <td class="serv-label" style="color:var(--azul);font-weight:700;">TOTAL</td>
+      ${totRow}
+    </tr>
+  `;
+}
+
+function calcTablero(serv,turno){
+  // Recalcular totales en tiempo real
+  const r=parseInt(document.getElementById(`mov_${serv}_${turno}_r`)?.value)||0;
+  const i=parseInt(document.getElementById(`mov_${serv}_${turno}_i`)?.value)||0;
+  const e=parseInt(document.getElementById(`mov_${serv}_${turno}_e`)?.value)||0;
+  let totalR=0,totalI=0,totalE=0;
+  SERVICIOS_TABLERO.forEach(s=>{
+    totalR+=parseInt(document.getElementById(`mov_${s}_${turno}_r`)?.value)||0;
+    totalI+=parseInt(document.getElementById(`mov_${s}_${turno}_i`)?.value)||0;
+    totalE+=parseInt(document.getElementById(`mov_${s}_${turno}_e`)?.value)||0;
+  });
+  document.getElementById(`tot_${turno}_r`).textContent=totalR;
+  document.getElementById(`tot_${turno}_i`).textContent=totalI;
+  document.getElementById(`tot_${turno}_e`).textContent=totalE;
+}
+
+async function guardarTablero(){
+  const turnos=['M','V','N'];
+  const ops=[];
+  SERVICIOS_TABLERO.forEach(serv=>{
+    turnos.forEach(t=>{
+      const r=parseInt(document.getElementById(`mov_${serv}_${t}_r`)?.value)||0;
+      const i=parseInt(document.getElementById(`mov_${serv}_${t}_i`)?.value)||0;
+      const e=parseInt(document.getElementById(`mov_${serv}_${t}_e`)?.value)||0;
+      const entrego=r+i-e;
+      const existing=tableroData[`${serv}_${t}`];
+      if(existing){
+        ops.push(db.from('movimientos_turno').update({recibo:r,ingresos:i,egresos:e,entrego}).eq('id',existing.id));
+      } else {
+        ops.push(db.from('movimientos_turno').insert({fecha:currentFecha,turno:t,servicio:serv,recibo:r,ingresos:i,egresos:e,entrego}));
+      }
+    });
+  });
+  await Promise.all(ops);
+  showToast('Tablero guardado','success');
+  await loadAll();
+}
+
+// ── CENSO ENFERMERÍA ──
+function icoChk(val, ico, field, camaId){
+  const cls=val?'':'off';
+  return `<span class="chk-ico ${cls}" onclick="toggleField('${camaId}','${field}')">${ico}</span>`;
+}
+
+function renderCenso(){
+  const tbody=document.getElementById('tbody');
+  const rows=allRows.filter(r=>{
+    const q=(document.getElementById('search')?.value||'').toLowerCase();
+    return !q||(r.nombre_paciente||'').toLowerCase().includes(q);
+  });
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="27" style="text-align:center;padding:24px;color:var(--texto-3);">Sin camas</td></tr>';return;}
+
+  tbody.innerHTML=rows.map(r=>{
+    const vacio=!r.nombre_paciente;
+    const e=enfData[r.id]||{};
+    const sp=r.servicio?`<span class="serv-pill ${servClass(r.servicio)}" style="font-size:9px;">${r.servicio}</span>`:'';
+    if(vacio){
+      return `<tr style="opacity:.5;">
+        <td class="col-cama"><span class="cama-lbl">${r.numero_cama}</span></td>
+        <td colspan="25"><span class="empty-cell">— disponible —</span></td>
+        <td></td>
+      </tr>`;
+    }
+    return `<tr data-cama-id="${r.id}">
+      <td class="col-cama"><span class="cama-lbl">${r.numero_cama}</span></td>
+      <td>${sp}</td>
+      <td style="font-size:10px;font-weight:500;" title="${r.nombre_paciente}">${trunc(r.nombre_paciente,18)}</td>
+      <td style="font-size:9px;font-family:'IBM Plex Mono',monospace;">${r.cedula||''}</td>
+      <td style="text-align:center;">${r.edad||''}</td>
+      <td style="text-align:center;">${r.sexo||''}</td>
+      <td title="${r.diagnostico||''}" style="font-size:10px;">${trunc(r.diagnostico,28)}</td>
+      <!-- Cuatro paquetes -->
+      <td style="text-align:center;">${icoChk(e.estudios_lab,'🧪','estudios_lab',r.id)}</td>
+      <td style="text-align:center;">${icoChk(e.estudios_imagen,'🖼','estudios_imagen',r.id)}</td>
+      <td style="text-align:center;">${icoChk(e.hem_cu,'🩸','hem_cu',r.id)}</td>
+      <td style="text-align:center;">${icoChk(e.rx,'☢️','rx',r.id)}</td>
+      <td style="text-align:center;">${icoChk(e.curaciones,'🩹','curaciones',r.id)}</td>
+      <td style="text-align:center;">${icoChk(e.cvc,'💉','cvc',r.id)}</td>
+      <td class="editable"><input class="input-cell" value="${e.infusiones||''}" placeholder="CVP…" onchange="updateField('${r.id}','infusiones',this.value)"/></td>
+      <!-- Respiratorio -->
+      <td style="text-align:center;">${icoChk(e.ventilador_mecanico,'🌬','ventilador_mecanico',r.id)}</td>
+      <td style="text-align:center;">${icoChk(e.cpap,'😷','cpap',r.id)}</td>
+      <td class="editable"><input class="input-cell" value="${e.oxigeno_litros||''}" placeholder="3L PRN" onchange="updateField('${r.id}','oxigeno_litros',this.value)"/></td>
+      <!-- DPCA -->
+      <td class="editable"><input class="input-cell" value="${e.soluciones_parenterales||''}" placeholder="SS 500/24" onchange="updateField('${r.id}','soluciones_parenterales',this.value)"/></td>
+      <td class="editable"><input class="input-cell" value="${e.glucosa||''}" placeholder="PRN" onchange="updateField('${r.id}','glucosa',this.value)"/></td>
+      <td class="editable"><input class="input-cell" value="${e.diuresis||''}" placeholder="1500ml" onchange="updateField('${r.id}','diuresis',this.value)"/></td>
+      <td style="text-align:center;">${icoChk(e.lactancia,'🤱','lactancia',r.id)}</td>
+      <!-- Antibióticos -->
+      <td class="editable"><input class="input-cell" value="${e.antibioticos||''}" placeholder="Pip+Tazo…" onchange="updateField('${r.id}','antibioticos',this.value)"/></td>
+      <!-- Evaluación -->
+      <td class="editable"><input class="input-cell" value="${e.inter_consulta||''}" placeholder="Cardio…" onchange="updateField('${r.id}','inter_consulta',this.value)"/></td>
+      <td style="text-align:center;">${icoChk(e.bano_general,'🚿','bano_general',r.id)}</td>
+      <td class="editable"><input class="input-cell" value="${e.cuidados_especiales||''}" placeholder="SVPT, CGE…" onchange="updateField('${r.id}','cuidados_especiales',this.value)"/></td>
+      <td class="editable"><input class="input-cell" value="${e.pendientes||''}" placeholder="Pendientes…" onchange="updateField('${r.id}','pendientes',this.value)"/></td>
+      <td>
+        <button class="save-row-btn" onclick="saveRow('${r.id}')">💾</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function applyFilters(){ renderCenso(); }
+
+// Actualizar campo local sin guardar aún
+function updateField(camaId, field, value){
+  if(!enfData[camaId]) enfData[camaId]={cama_id:camaId,fecha:currentFecha,turno:currentTurno};
+  enfData[camaId][field]=value;
+}
+
+async function toggleField(camaId, field){
+  if(!enfData[camaId]) enfData[camaId]={cama_id:camaId,fecha:currentFecha,turno:currentTurno};
+  enfData[camaId][field]=!enfData[camaId][field];
+  await saveRow(camaId);
+}
+
+async function saveRow(camaId){
+  const cama=allRows.find(r=>r.id===camaId);
+  if(!cama)return;
+  const existing=enfData[camaId];
+  const payload={
+    ...existing,
+    cama_id:camaId,
+    numero_cama:cama.numero_cama,
+    fecha:currentFecha,
+    turno:currentTurno,
+    nombre_paciente:cama.nombre_paciente,
+    cedula:cama.cedula,
+    edad:cama.edad,
+    sexo:cama.sexo,
+    servicio:cama.servicio,
+    diagnostico:cama.diagnostico,
+  };
+  let error;
+  if(existing?.id){
+    ({error}=await db.from('censo_enfermeria_hospital').update(payload).eq('id',existing.id));
+  } else {
+    const{data,error:e}=await db.from('censo_enfermeria_hospital').insert(payload).select().single();
+    error=e;
+    if(data) enfData[camaId]={...enfData[camaId],...data};
+  }
+  if(error)showToast('Error: '+error.message,'error');
+  else showToast(`Cama ${cama.numero_cama} guardada`,'success');
+}
+
+async function guardarTodo(){
+  const camas=allRows.filter(r=>r.nombre_paciente);
+  for(const c of camas){
+    await saveRow(c.id);
+  }
+  showToast('Todo guardado','success');
+}
+
+// ── MODAL ──
+function openModal(camaId){
+  const cama=allRows.find(r=>r.id===camaId);
+  if(!cama||!cama.nombre_paciente)return;
+  const e=enfData[camaId]||{};
+  editingCamaId=camaId;
+  document.getElementById('modal-title').textContent=`Cama ${cama.numero_cama} — Enfermería`;
+  document.getElementById('m-cama').value=cama.numero_cama;
+  document.getElementById('m-nombre').value=cama.nombre_paciente||'';
+  document.getElementById('m-edad').value=cama.edad||'';
+  document.getElementById('m-dx').value=cama.diagnostico||'';
+  document.getElementById('m-lab').checked=!!e.estudios_lab;
+  document.getElementById('m-img').checked=!!e.estudios_imagen;
+  document.getElementById('m-hcu').checked=!!e.hem_cu;
+  document.getElementById('m-rx').checked=!!e.rx;
+  document.getElementById('m-cur').checked=!!e.curaciones;
+  document.getElementById('m-cvc').checked=!!e.cvc;
+  document.getElementById('m-vm').checked=!!e.ventilador_mecanico;
+  document.getElementById('m-cpap').checked=!!e.cpap;
+  document.getElementById('m-bano').checked=!!e.bano_general;
+  document.getElementById('m-lact').checked=!!e.lactancia;
+  document.getElementById('m-vvp').value=e.infusiones||'';
+  document.getElementById('m-o2').value=e.oxigeno_litros||'';
+  document.getElementById('m-sol').value=e.soluciones_parenterales||'';
+  document.getElementById('m-gluc').value=e.glucosa||'';
+  document.getElementById('m-diu').value=e.diuresis||'';
+  document.getElementById('m-abx').value=e.antibioticos||'';
+  document.getElementById('m-ic').value=e.inter_consulta||'';
+  document.getElementById('m-ea').value=e.estado_animo||'';
+  document.getElementById('m-ce').value=e.cuidados_especiales||'';
+  document.getElementById('m-pend').value=e.pendientes||'';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal(){document.getElementById('modal-overlay').classList.remove('open');editingCamaId=null;}
+
+async function saveModal(){
+  if(!editingCamaId)return;
+  if(!enfData[editingCamaId]) enfData[editingCamaId]={};
+  Object.assign(enfData[editingCamaId],{
+    estudios_lab:    document.getElementById('m-lab').checked,
+    estudios_imagen: document.getElementById('m-img').checked,
+    hem_cu:          document.getElementById('m-hcu').checked,
+    rx:              document.getElementById('m-rx').checked,
+    curaciones:      document.getElementById('m-cur').checked,
+    cvc:             document.getElementById('m-cvc').checked,
+    ventilador_mecanico: document.getElementById('m-vm').checked,
+    cpap:            document.getElementById('m-cpap').checked,
+    bano_general:    document.getElementById('m-bano').checked,
+    lactancia:       document.getElementById('m-lact').checked,
+    infusiones:      document.getElementById('m-vvp').value,
+    oxigeno_litros:  document.getElementById('m-o2').value,
+    soluciones_parenterales: document.getElementById('m-sol').value,
+    glucosa:         document.getElementById('m-gluc').value,
+    diuresis:        document.getElementById('m-diu').value,
+    antibioticos:    document.getElementById('m-abx').value,
+    inter_consulta:  document.getElementById('m-ic').value,
+    estado_animo:    document.getElementById('m-ea').value,
+    cuidados_especiales: document.getElementById('m-ce').value,
+    pendientes:      document.getElementById('m-pend').value,
+  });
+  await saveRow(editingCamaId);
+  closeModal();
+  renderCenso();
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
+</script>
+</body>
+</html>
