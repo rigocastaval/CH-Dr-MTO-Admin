@@ -79,19 +79,40 @@
     }
     .tbl-wrap table thead th { border-color: #b4b2a9; }
 
-    /* Columna cama — ancho automático, nunca se corta */
+    /* Columna cama — ancho fijo generoso, siempre visible */
     td.col-cama, th.col-cama {
-      width: auto !important;
-      min-width: fit-content !important;
+      min-width: 72px !important;
+      max-width: 90px !important;
       white-space: nowrap !important;
+      overflow: visible !important;
+      text-overflow: unset !important;
     }
-    /* Encabezados siempre visibles al hacer scroll vertical */
-    .tbl-wrap { max-height: 70vh; overflow-y: auto; overflow-x: auto; }
-    .tbl-wrap thead th { position: sticky; top: 0; z-index: 4; }
-    .tbl-wrap thead th.col-cama { position: sticky; left: 0; top: 0; z-index: 5; }
-    /* Para censos de enfermería */
-    #censo-table thead th { position: sticky; top: 0; z-index: 4; }
-    #censo-table thead th.col-cama { position: sticky; left: 0; top: 0; z-index: 5; }
+    /* Tabla sin ancho fijo para que columnas respiren */
+    .tbl-wrap table { table-layout: auto !important; }
+    /* Scroll vertical con encabezados sticky */
+    .tbl-wrap {
+      max-height: 72vh;
+      overflow-y: auto;
+      overflow-x: auto;
+    }
+    /* Sticky thead — funciona con table-layout:auto */
+    .tbl-wrap table thead tr:first-child th {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      background: var(--bg, #F8F7F4);
+      box-shadow: 0 1px 0 #b4b2a9;
+    }
+    .tbl-wrap table thead tr:last-child th {
+      position: sticky;
+      top: 33px; /* altura de la primera fila de encabezado */
+      z-index: 4;
+      background: var(--bg, #F8F7F4);
+      box-shadow: 0 1px 0 #b4b2a9;
+    }
+    /* Columna cama sticky horizontal */
+    td.col-cama { background: var(--surface, #fff) !important; z-index: 2; }
+    th.col-cama { z-index: 5 !important; }
   </style>
 </head>
 <body>
