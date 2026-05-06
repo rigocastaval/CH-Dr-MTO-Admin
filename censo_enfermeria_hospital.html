@@ -60,8 +60,17 @@
     #censo-table td{vertical-align:middle;white-space:normal;word-break:break-word;}
     #censo-table td.col-cama{vertical-align:middle;}
 
-    /* Columnas más amplias para texto */
-    .col-dx   {min-width:160px;max-width:220px;}
+    /* CUADRÍCULA — bordes en todas las celdas */
+    #censo-table th, #censo-table td {
+      border: 1px solid #D3D1C7;
+    }
+    #censo-table thead th {
+      border-color: #b4b2a9;
+    }
+    /* Urgencias también */
+    #censo-table-urg th, #censo-table-urg td {
+      border: 1px solid #D3D1C7;
+    }
     .col-vvp  {min-width:110px;}
     .col-sol  {min-width:90px;}
     .col-abx  {min-width:130px;}
@@ -78,6 +87,18 @@
     tr:hover td.col-cama{background:var(--surface);}
     .save-row-btn{font-size:9px;padding:2px 6px;border:1px solid var(--azul);border-radius:3px;background:var(--azul-lt);color:var(--azul);cursor:pointer;white-space:nowrap;}
     .save-row-btn:hover{background:var(--azul);color:#fff;}
+    /* CUADRÍCULA VISIBLE en todos los censos */
+    #censo-table th, #censo-table td {
+      border: 1px solid #C8C6BC !important;
+    }
+    #censo-table thead th {
+      border-color: #a8a6a0 !important;
+    }
+    /* Fila de diagnóstico — borde inferior más oscuro para separar pacientes */
+    #censo-table tr.dx-row td {
+      border-bottom: 2px solid #a8a6a0 !important;
+    }
+
   </style>
 </head>
 <body>
@@ -173,20 +194,15 @@
           <thead>
             <tr>
               <th class="col-cama" rowspan="2" style="min-width:56px;">Cama</th>
-              <th rowspan="2" style="min-width:30px;">Serv.</th>
-              <th rowspan="2" style="min-width:160px;">Nombre del paciente<br/><span style="font-weight:400;color:var(--texto-3);font-size:9px;">↳ Diagnóstico debajo</span></th>
-              <th rowspan="2" style="min-width:72px;">Cédula</th>
-              <th rowspan="2" style="min-width:28px;">Edad</th>
-              <th rowspan="2" style="min-width:18px;">S</th>
+              <th rowspan="2" style="min-width:50px;" title="Servicio">Serv.</th>
               <th colspan="7" class="th-group-label">Cuatro Paquetes / Procedimientos</th>
               <th colspan="3" class="th-group-label">Respiratorio</th>
               <th colspan="4" class="th-group-label">DPCA / Líquidos</th>
               <th colspan="1" class="th-group-label">Medicamento</th>
               <th colspan="4" class="th-group-label">Evaluación / Notas</th>
-              <th rowspan="2" style="min-width:44px;">Acción</th>
+              <th rowspan="2" style="min-width:44px;">Acc.</th>
             </tr>
             <tr>
-              <!-- Cuatro paquetes — todos texto libre -->
               <th style="min-width:80px;" title="Estudios de Laboratorio (BH, QS, EGO, etc.)">Lab</th>
               <th style="min-width:80px;" title="Estudios de Imagen (Rx, USG, TAC, etc.)">Imagen</th>
               <th style="min-width:80px;" title="Hemocultivo">HemoCultivo</th>
@@ -397,9 +413,9 @@ function renderCenso(){
       </tr>`;
     }
 
-    // FILA 1: datos del paciente + campos clínicos
-    // FILA 2: diagnóstico en colspan completo, fondo sutil
-    const totalCols=25; // total columnas incluyendo cama
+    // FILA 1: servicio + campos clínicos (sin nombre/cédula/edad/sexo — van abajo)
+    // FILA 2: información del paciente + diagnóstico en colspan completo
+    const totalCols=22; // reducido al quitar 4 columnas de la fila 1
     return `
     <tr data-id="${r.id}" data-cama="${r.numero_cama}" draggable="true"
       ondragstart="onDragStartEnf(event)"
@@ -413,10 +429,6 @@ function renderCenso(){
         <span class="cama-lbl">${r.numero_cama}</span>
       </td>
       <td style="vertical-align:middle;border-bottom:none;">${sp}</td>
-      <td style="font-size:11px;font-weight:600;vertical-align:middle;border-bottom:none;white-space:nowrap;">${r.nombre_paciente||''}</td>
-      <td style="font-size:9px;font-family:'IBM Plex Mono',monospace;vertical-align:middle;border-bottom:none;">${r.cedula||''}</td>
-      <td style="text-align:center;vertical-align:middle;border-bottom:none;">${r.edad||''}</td>
-      <td style="text-align:center;vertical-align:middle;border-bottom:none;">${r.sexo||''}</td>
       <td class="editable" style="border-bottom:none;">${taCell(e.estudios_lab,'',r.id,'estudios_lab')}</td>
       <td class="editable" style="border-bottom:none;">${taCell(e.estudios_imagen,'',r.id,'estudios_imagen')}</td>
       <td class="editable" style="border-bottom:none;">${taCell(e.hem_cu,'',r.id,'hem_cu')}</td>
@@ -441,7 +453,7 @@ function renderCenso(){
       </td>
     </tr>
     <tr data-id="${r.id}" data-cama="${r.numero_cama}"
-      style="border-bottom:1px solid var(--gris-borde);">
+      class="dx-row" style="border-bottom:none;">
       <td colspan="${totalCols-1}"
         style="background:#F8F7F4;padding:4px 10px 6px 10px;font-size:10px;line-height:1.5;white-space:normal;word-break:break-word;">
         <span style="display:inline-flex;flex-wrap:wrap;gap:12px;align-items:baseline;">
