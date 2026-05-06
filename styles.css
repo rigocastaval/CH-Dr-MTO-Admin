@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@300;400;500;600&display=swap');
+
 /* ================================================================
    SISTEMA HOSPITALARIO — Estilos globales
    Conectar con Supabase: reemplaza la config en supabase.js
@@ -6,12 +8,19 @@
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 
 :root {
-  --azul:       #185FA5;
-  --azul-dk:    #0C447C;
-  --azul-lt:    #E6F1FB;
-  --rojo:       #E24B4A;
+  /* Colores institucionales ISSSTE */
+  --azul:       #7B1C3E;   /* guinda institucional como color primario */
+  --azul-dk:    #5A1229;
+  --azul-lt:    #F5EBF0;
+  --azul-dk2:   #185FA5;   /* azul secundario para elementos de datos */
+
+  /* Oro institucional */
+  --oro:        #A8884A;
+  --oro-lt:     #C4A96A;
+
+  --rojo:       #C0392B;
   --rojo-lt:    #FCEBEB;
-  --verde:      #3B6D11;
+  --verde:      #27660A;
   --verde-lt:   #EAF3DE;
   --naranja:    #854F0B;
   --naranja-lt: #FAEEDA;
@@ -20,12 +29,14 @@
   --gris-borde: #D3D1C7;
   --bg:         #F8F7F4;
   --surface:    #FFFFFF;
-  --texto:      #2C2C2A;
-  --texto-2:    #5F5E5A;
+  --texto:      #1A1410;
+  --texto-2:    #5A524A;
   --texto-3:    #888780;
   --radio:      8px;
   --radio-lg:   12px;
   --sombra:     0 1px 3px rgba(0,0,0,.08);
+
+  --font-sans: 'Source Sans 3', 'Segoe UI', sans-serif;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -90,7 +101,7 @@ body {
 }
 .btn:hover { background: var(--bg); border-color: #b4b2a9; }
 .btn-primary { background: var(--azul); color: #fff; border-color: var(--azul); }
-.btn-primary:hover { background: var(--azul-dk); border-color: var(--azul-dk); }
+.btn-primary:hover { background: #5A1229; border-color: #5A1229; }
 .btn-danger  { color: var(--rojo); border-color: #f09595; }
 .btn-danger:hover { background: var(--rojo-lt); }
 .btn-sm { padding: 4px 9px; font-size: 11px; }

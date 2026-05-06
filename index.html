@@ -1,121 +1,323 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sistema Hospitalario — Iniciar sesión</title>
-  <link rel="stylesheet" href="styles.css" />
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sistema de Gestión Hospitalaria — ISSSTE Colima</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Source+Sans+3:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+  <style>
+    :root {
+      --guinda:     #7B1C3E;
+      --guinda-dk:  #5A1229;
+      --guinda-lt:  #F5EBF0;
+      --oro:        #A8884A;
+      --oro-lt:     #C4A96A;
+      --blanco:     #FFFFFF;
+      --gris-lt:    #F4F2EF;
+      --gris-borde: #D8D4CE;
+      --texto:      #1A1410;
+      --texto-2:    #5A524A;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Source Sans 3', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: stretch;
+      background: #0e0a08;
+      overflow: hidden;
+    }
+
+    /* ── LADO IZQUIERDO — Imagen + branding ── */
+    .left-panel {
+      flex: 1;
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 48px;
+      overflow: hidden;
+    }
+
+    .bg-img {
+      position: absolute;
+      inset: 0;
+      background: url('issste_bg.jpg') center/cover no-repeat;
+      filter: brightness(.88) contrast(1.05);
+    }
+
+    /* Degradado inferior para legibilidad del texto */
+    .bg-img::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        transparent 30%,
+        rgba(90,18,41,.55) 70%,
+        rgba(90,18,41,.88) 100%
+      );
+    }
+
+    .left-content {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      color: var(--blanco);
+    }
+
+    /* Línea dorada decorativa */
+    .left-content::before {
+      content: '';
+      display: block;
+      width: 60px;
+      height: 2px;
+      background: var(--oro-lt);
+      margin: 0 auto 20px;
+    }
+
+    .sistema-label {
+      font-family: 'Libre Baskerville', Georgia, serif;
+      font-size: clamp(18px, 2.2vw, 26px);
+      font-weight: 700;
+      letter-spacing: .04em;
+      line-height: 1.2;
+      color: var(--blanco);
+      text-shadow: 0 1px 8px rgba(0,0,0,.4);
+    }
+
+    .delegacion-label {
+      font-family: 'Source Sans 3', sans-serif;
+      font-size: clamp(12px, 1.2vw, 15px);
+      font-weight: 300;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,.85);
+      margin-top: 10px;
+      line-height: 1.6;
+    }
+
+    .clinica-label {
+      font-family: 'Libre Baskerville', Georgia, serif;
+      font-style: italic;
+      font-size: clamp(11px, 1.1vw, 14px);
+      color: var(--oro-lt);
+      margin-top: 6px;
+      letter-spacing: .02em;
+    }
+
+    /* Barra inferior guinda */
+    .guinda-bar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 6px;
+      background: var(--guinda);
+      z-index: 3;
+    }
+
+    /* ── LADO DERECHO — Login ── */
+    .right-panel {
+      width: 420px;
+      flex-shrink: 0;
+      background: var(--blanco);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 40px;
+      position: relative;
+    }
+
+    /* Franja guinda lateral */
+    .right-panel::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+      background: linear-gradient(to bottom, var(--guinda), var(--oro));
+    }
+
+    .login-logo {
+      width: 80px;
+      height: 80px;
+      margin-bottom: 24px;
+      object-fit: contain;
+    }
+
+    .login-title {
+      font-family: 'Libre Baskerville', Georgia, serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--guinda);
+      text-align: center;
+      line-height: 1.3;
+      margin-bottom: 6px;
+    }
+
+    .login-sub {
+      font-size: 12px;
+      font-weight: 300;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--texto-2);
+      text-align: center;
+      margin-bottom: 36px;
+    }
+
+    .field-group {
+      width: 100%;
+      margin-bottom: 16px;
+    }
+
+    .field-group label {
+      display: block;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--texto-2);
+      margin-bottom: 6px;
+    }
+
+    .field-group input {
+      width: 100%;
+      padding: 11px 14px;
+      border: 1.5px solid var(--gris-borde);
+      border-radius: 6px;
+      font-size: 14px;
+      font-family: 'Source Sans 3', sans-serif;
+      color: var(--texto);
+      background: var(--gris-lt);
+      transition: border-color .2s, box-shadow .2s;
+      outline: none;
+    }
+
+    .field-group input:focus {
+      border-color: var(--guinda);
+      background: var(--blanco);
+      box-shadow: 0 0 0 3px rgba(123,28,62,.1);
+    }
+
+    .error-msg {
+      background: #FEF2F2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      width: 100%;
+      margin-bottom: 14px;
+      display: none;
+    }
+
+    .btn-login {
+      width: 100%;
+      padding: 12px;
+      background: var(--guinda);
+      color: var(--blanco);
+      border: none;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      font-family: 'Source Sans 3', sans-serif;
+      letter-spacing: .04em;
+      cursor: pointer;
+      transition: background .2s, transform .1s;
+      margin-top: 4px;
+    }
+
+    .btn-login:hover  { background: var(--guinda-dk); }
+    .btn-login:active { transform: scale(.99); }
+
+    .login-footer {
+      margin-top: 24px;
+      font-size: 11px;
+      color: var(--texto-2);
+      text-align: center;
+      line-height: 1.6;
+    }
+
+    /* Línea dorada decorativa inferior */
+    .oro-line {
+      display: block;
+      width: 40px;
+      height: 2px;
+      background: var(--oro);
+      margin: 20px auto 0;
+    }
+
+    /* Responsive: stack vertical en pantallas pequeñas */
+    @media (max-width: 700px) {
+      body { flex-direction: column; overflow: auto; }
+      .left-panel { min-height: 240px; flex: none; }
+      .right-panel { width: 100%; padding: 36px 24px; }
+      .right-panel::before { width: 100%; height: 4px; top: 0; left: 0; right: 0; }
+    }
+  </style>
 </head>
 <body>
 
-<div class="login-page">
-  <div class="login-card">
-
-    <div class="login-logo-wrap">
-      <div class="login-logo">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <rect x="11" y="3" width="2" height="18" rx="1" fill="white"/>
-          <rect x="3" y="11" width="18" height="2" rx="1" fill="white"/>
-        </svg>
+  <!-- LADO IZQUIERDO -->
+  <div class="left-panel">
+    <div class="bg-img"></div>
+    <div class="left-content">
+      <div class="sistema-label">Sistema de Gestión Hospitalaria</div>
+      <div class="delegacion-label">
+        Delegación Estatal Colima
       </div>
-      <div>
-        <div class="login-title">Sistema Hospitalario</div>
-        <div class="login-sub">Gestión de camas · ISSSTE</div>
-      </div>
+      <div class="clinica-label">Clínica Hospital Dr. Miguel Trejo Ochoa</div>
     </div>
+    <div class="guinda-bar"></div>
+  </div>
+
+  <!-- LADO DERECHO — Formulario -->
+  <div class="right-panel">
+    <img src="logo_issste.png" alt="ISSSTE" class="login-logo"/>
+
+    <div class="login-title">Acceso al Sistema</div>
+    <div class="login-sub">ISSSTE · Gestión de camas</div>
 
     <div id="error-msg" class="error-msg"></div>
 
-    <div class="field">
+    <div class="field-group">
       <label>Correo electrónico</label>
-      <input type="email" id="email" placeholder="usuario@hospital.mx" autocomplete="username" />
+      <input type="email" id="email" placeholder="usuario@issste.gob.mx" autocomplete="username"/>
     </div>
 
-    <div class="field">
+    <div class="field-group">
       <label>Contraseña</label>
-      <input type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+      <input type="password" id="password" placeholder="••••••••" autocomplete="current-password"/>
     </div>
 
-    <button class="btn btn-primary" style="width:100%;justify-content:center;margin-top:4px;" onclick="doLogin()">
-      Iniciar sesión
-    </button>
+    <button class="btn-login" id="btn-login" onclick="doLogin()">Iniciar sesión</button>
 
-    <p class="login-hint">
-      Sistema de uso interno. Si olvidaste tu contraseña, contacta al administrador.
-    </p>
+    <div class="login-footer">
+      Sistema de uso interno. Si olvidaste tu contraseña,<br/>contacta al administrador del sistema.
+      <span class="oro-line"></span>
+    </div>
   </div>
-</div>
 
-<!-- Supabase CDN -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<script src="supabase.js"></script>
-<script>
-  /* Si ya hay sesión activa, redirige directo */
-  (async () => {
-    const session = await getSession();
-    if (session) {
-      const user = await getUser();
-      const rol = user?.rol || 'viewer';
-      const destino = {
-        ventanilla_admision: 'admision_urgencias.html',
-        director:            'reporte.html',
-        subdirector:         'reporte.html',
-      };
-      window.location.href = destino[rol] || 'hospitalizacion.html';
-    }
-  })();
-
-  async function doLogin() {
-    const email    = document.getElementById('email').value.trim();
-    const password = document.getElementById('password').value;
-    const errEl    = document.getElementById('error-msg');
-
-    if (!email || !password) {
-      errEl.textContent = 'Ingresa correo y contraseña.';
-      errEl.style.display = 'block';
-      return;
-    }
-
-    errEl.style.display = 'none';
-    const btn = document.querySelector('.btn-primary');
-    btn.textContent = 'Entrando…';
-    btn.disabled = true;
-
-    const { error } = await db.auth.signInWithPassword({ email, password });
-
-    if (error) {
-      errEl.textContent = 'Correo o contraseña incorrectos.';
-      errEl.style.display = 'block';
-      btn.textContent = 'Iniciar sesión';
-      btn.disabled = false;
-    } else {
-      // Obtener sesión y buscar perfil por auth_id O por email
-      const { data: { session } } = await db.auth.getSession();
-      let rol = 'viewer';
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="supabase.js"></script>
+  <script>
+    // Redirigir si ya hay sesión activa
+    (async () => {
+      const session = await getSession();
       if (session) {
-        // Primero por auth_id
-        let { data: perfil } = await db
-          .from('usuarios')
-          .select('rol, auth_id, id')
-          .eq('auth_id', session.user.id)
-          .maybeSingle();
-
-        // Si no hay, buscar por email y vincular auth_id
-        if (!perfil) {
-          const { data: perfilEmail } = await db
-            .from('usuarios')
-            .select('rol, auth_id, id')
-            .eq('email', session.user.email)
-            .maybeSingle();
-          if (perfilEmail) {
-            // Vincular auth_id ahora que el usuario inició sesión
-            await db.from('usuarios').update({ auth_id: session.user.id }).eq('id', perfilEmail.id);
-            perfil = perfilEmail;
-          }
-        }
-        rol = perfil?.rol || 'viewer';
+        const user = await getUser();
+        redirectByRole(user?.rol || 'viewer');
       }
+    })();
 
+    function redirectByRole(rol) {
       const DESTINO = {
         ventanilla_admision: 'admision_urgencias.html',
         director:            'reporte.html',
@@ -128,12 +330,52 @@
       };
       window.location.href = DESTINO[rol] || 'hospitalizacion.html';
     }
-  }
 
-  /* Permite presionar Enter */
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Enter') doLogin();
-  });
-</script>
+    async function doLogin() {
+      const email    = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      const errEl    = document.getElementById('error-msg');
+      const btn      = document.getElementById('btn-login');
+
+      if (!email || !password) {
+        errEl.textContent = 'Ingresa tu correo y contraseña.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      errEl.style.display = 'none';
+      btn.textContent = 'Verificando…';
+      btn.disabled = true;
+
+      const { error } = await db.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        errEl.textContent = 'Correo o contraseña incorrectos.';
+        errEl.style.display = 'block';
+        btn.textContent = 'Iniciar sesión';
+        btn.disabled = false;
+        return;
+      }
+
+      // Buscar rol del usuario
+      const { data: { session } } = await db.auth.getSession();
+      let rol = 'viewer';
+      if (session) {
+        let { data: perfil } = await db.from('usuarios').select('rol,auth_id,id').eq('auth_id', session.user.id).maybeSingle();
+        if (!perfil) {
+          const { data: byEmail } = await db.from('usuarios').select('rol,auth_id,id').eq('email', session.user.email).maybeSingle();
+          if (byEmail) {
+            await db.from('usuarios').update({ auth_id: session.user.id }).eq('id', byEmail.id);
+            perfil = byEmail;
+          }
+        }
+        rol = perfil?.rol || 'viewer';
+      }
+
+      redirectByRole(rol);
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  </script>
 </body>
 </html>
