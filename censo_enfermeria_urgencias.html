@@ -20,16 +20,31 @@
     .turno-bar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
     .turno-btn{padding:6px 16px;border-radius:20px;border:1px solid var(--gris-borde);background:var(--surface);font-size:12px;font-weight:500;cursor:pointer;color:var(--texto-2);transition:all .15s;}
     .turno-btn.active{background:var(--azul);color:#fff;border-color:var(--azul);}
-    td.col-cama,th.col-cama{position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:2px 0 5px rgba(0,0,0,.07);}
+
+    /* Columna cama fija */
+    td.col-cama,th.col-cama{position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:2px 0 5px rgba(0,0,0,.07);min-width:66px;white-space:nowrap;}
     thead th.col-cama{background:var(--bg);z-index:3;}
     .th-group-label{background:#F1EFE8;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--texto-2);text-align:center;padding:3px 4px;border-bottom:1px solid var(--gris-borde);}
-    .chk-ico{font-size:13px;cursor:pointer;display:inline-block;line-height:1;user-select:none;}
-    .chk-ico.off{opacity:.25;}
-    .input-cell{width:100%;border:none;background:transparent;font-size:10px;color:var(--texto);font-family:var(--font-sans);padding:0;outline:none;}
-    .input-cell:focus{background:var(--azul-lt);border-radius:2px;}
-    td.editable{padding:3px 5px;}
+
+    /* Inputs */
+    .input-cell{width:100%;border:none;background:transparent;font-size:10px;color:var(--texto);font-family:var(--font-sans);padding:0;outline:none;resize:none;overflow:hidden;min-height:16px;line-height:1.4;}
+    .input-cell:focus{background:var(--azul-lt);border-radius:2px;padding:1px 2px;}
+    td.editable{padding:3px 5px;vertical-align:top;}
+
+    /* 2 filas por paciente */
+    #censo-table tbody tr{border-bottom:none;}
+    #censo-table td{vertical-align:middle;white-space:normal;word-break:break-word;}
+
+    /* Drag & drop */
+    tr.dragging-enf{opacity:.3;}
+    tr.drag-over-enf td{border-top:2px solid var(--azul)!important;}
+    .drag-handle-enf{cursor:grab;color:var(--texto-3);font-size:13px;padding:0 3px;user-select:none;}
+
+    tr:hover td{background:#FAFAF8;}
+    tr:hover td.col-cama{background:var(--surface);}
     .save-row-btn{font-size:9px;padding:2px 6px;border:1px solid var(--azul);border-radius:3px;background:var(--azul-lt);color:var(--azul);cursor:pointer;}
     .save-row-btn:hover{background:var(--azul);color:#fff;}
+
     .triaje-R{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:var(--rojo-lt);color:var(--rojo);}
     .triaje-N{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:#FAEEDA;color:var(--naranja);}
     .triaje-A{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:#FFF9E6;color:#BA7517;}
@@ -79,6 +94,7 @@
       </div>
       <input type="date" id="fecha-censo" style="padding:6px 10px;border:1px solid var(--gris-borde);border-radius:var(--radio);font-size:12px;background:var(--bg);"/>
       <button class="btn btn-sm btn-primary" onclick="guardarTodo()">💾 Guardar todo</button>
+      <button class="btn btn-sm" style="background:#6366f1;color:#fff;border-color:#6366f1;" onclick="hacerCorte()">📄 Hacer corte</button>
       <button class="btn btn-sm" onclick="window.print()">🖨️ Imprimir</button>
     </div>
 
@@ -115,44 +131,44 @@
         <input class="search-input" id="search" type="text" placeholder="Buscar paciente…" oninput="renderCenso()"/>
       </div>
       <div class="tbl-wrap">
-        <table>
+        <table id="censo-table">
           <thead>
             <tr>
-              <th class="col-cama" rowspan="2" style="min-width:64px;">Cama</th>
-              <th rowspan="2" style="min-width:130px;">Nombre</th>
-              <th rowspan="2" style="min-width:18px;">S</th>
+              <th class="col-cama" rowspan="2">Cama</th>
+              <th rowspan="2" style="min-width:50px;">Triaje</th>
+              <th rowspan="2" style="min-width:160px;">Nombre<br/><span style="font-weight:400;color:var(--texto-3);font-size:9px;">↳ Diagnóstico debajo</span></th>
+              <th rowspan="2" style="min-width:72px;">Cédula</th>
               <th rowspan="2" style="min-width:28px;">Edad</th>
-              <th rowspan="2" style="min-width:55px;">Triaje</th>
-              <th rowspan="2" style="min-width:150px;">Diagnóstico</th>
+              <th rowspan="2" style="min-width:18px;">S</th>
               <th colspan="7" class="th-group-label">Procedimientos</th>
               <th colspan="3" class="th-group-label">Respiratorio</th>
               <th colspan="3" class="th-group-label">Líquidos</th>
               <th colspan="1" class="th-group-label">Medicamento</th>
-              <th colspan="3" class="th-group-label">Notas</th>
-              <th rowspan="2" style="min-width:36px;">Acc.</th>
+              <th colspan="3" class="th-group-label">Evaluación / Notas</th>
+              <th rowspan="2" style="min-width:44px;">Acción</th>
             </tr>
             <tr>
-              <th title="Lab" style="min-width:22px;">🧪</th>
-              <th title="Imagen" style="min-width:22px;">🖼</th>
-              <th title="HemoCultivo" style="min-width:22px;">🩸</th>
-              <th title="RX" style="min-width:22px;">☢️</th>
-              <th title="Curaciones" style="min-width:22px;">🩹</th>
-              <th title="CVC" style="min-width:22px;">💉</th>
-              <th title="VVP/Infusiones" style="min-width:80px;">VVP</th>
-              <th title="VM" style="min-width:22px;">🌬</th>
-              <th title="CPAP" style="min-width:22px;">😷</th>
-              <th title="O2" style="min-width:50px;">O₂</th>
-              <th style="min-width:70px;">Sol.Par.</th>
-              <th style="min-width:50px;">Glucosa</th>
-              <th style="min-width:50px;">Diuresis</th>
-              <th style="min-width:100px;">Antibióticos</th>
-              <th style="min-width:70px;">Interconsulta</th>
-              <th style="min-width:110px;">Cuidados Esp.</th>
-              <th style="min-width:110px;">Pendientes</th>
+              <th style="min-width:80px;">Lab</th>
+              <th style="min-width:80px;">Imagen</th>
+              <th style="min-width:80px;">HemoCultivo</th>
+              <th style="min-width:60px;">RX</th>
+              <th style="min-width:80px;">Curaciones</th>
+              <th style="min-width:80px;">CVC</th>
+              <th style="min-width:120px;">VVP / Infusiones</th>
+              <th style="min-width:80px;">Ventilador</th>
+              <th style="min-width:80px;">CPAP</th>
+              <th style="min-width:80px;">O₂</th>
+              <th style="min-width:100px;">Sol. Parenterales</th>
+              <th style="min-width:80px;">Glucosa</th>
+              <th style="min-width:80px;">Diuresis</th>
+              <th style="min-width:130px;">Antibióticos</th>
+              <th style="min-width:90px;">Interconsulta</th>
+              <th style="min-width:150px;">Cuidados Esp.</th>
+              <th style="min-width:150px;">Pendientes</th>
             </tr>
           </thead>
           <tbody id="tbody">
-            <tr><td colspan="25"><div class="loading"><div class="spinner"></div> Cargando…</div></td></tr>
+            <tr><td colspan="24"><div class="loading"><div class="spinner"></div> Cargando…</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -166,6 +182,7 @@
 <script>
 let currentUser=null, allRows=[], enfData={}, tableroData={};
 let currentTurno='M', currentFecha='';
+let dragSrcEnf=null;
 const AREAS_URG=['Urgencias','Pediátrico','Toco/Qx'];
 
 (function(){
@@ -175,7 +192,7 @@ const AREAS_URG=['Urgencias','Pediátrico','Toco/Qx'];
   document.getElementById('fecha-hoy').textContent=`${dias[d.getDay()]}, ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
   currentFecha=d.toISOString().split('T')[0];
   document.getElementById('fecha-censo').value=currentFecha;
-  document.getElementById('fecha-censo').addEventListener('change',e=>{currentFecha=e.target.value;loadAll();});
+  document.getElementById('fecha-censo').addEventListener('change',ev=>{currentFecha=ev.target.value;loadAll();});
 })();
 
 (async()=>{
@@ -192,7 +209,7 @@ const AREAS_URG=['Urgencias','Pediátrico','Toco/Qx'];
       document.getElementById('link-urg').style.display='none';
     }
     await loadAll();
-  }catch(err){ console.error(err); }
+  }catch(err){console.error(err);}
 })();
 
 function setTurno(t,btn){
@@ -222,10 +239,9 @@ function renderTablero(){
     const celdas=turnos.map(t=>{
       const d=tableroData[`${area}_${t}`]||{recibo:0,ingresos:0,egresos:0};
       return `
-        <td><input class="mov-input" type="number" min="0" value="${d.recibo||0}" id="mov_${area}_${t}_r"/></td>
-        <td><input class="mov-input" type="number" min="0" value="${d.ingresos||0}" id="mov_${area}_${t}_i"/></td>
-        <td><input class="mov-input" type="number" min="0" value="${d.egresos||0}" id="mov_${area}_${t}_e"/></td>
-      `;
+        <td><input class="mov-input" type="number" min="0" value="${d.recibo||0}" id="mov_${area.replace(/\//g,'_')}_${t}_r"/></td>
+        <td><input class="mov-input" type="number" min="0" value="${d.ingresos||0}" id="mov_${area.replace(/\//g,'_')}_${t}_i"/></td>
+        <td><input class="mov-input" type="number" min="0" value="${d.egresos||0}" id="mov_${area.replace(/\//g,'_')}_${t}_e"/></td>`;
     }).join('');
     return `<tr><td class="serv-label">${area}</td>${celdas}</tr>`;
   }).join('');
@@ -236,10 +252,11 @@ async function guardarTablero(){
   const turnos=['M','V','N'];
   const ops=[];
   AREAS_URG.forEach(area=>{
+    const areaKey=area.replace(/\//g,'_');
     turnos.forEach(t=>{
-      const r=parseInt(document.getElementById(`mov_${area}_${t}_r`)?.value)||0;
-      const i=parseInt(document.getElementById(`mov_${area}_${t}_i`)?.value)||0;
-      const e=parseInt(document.getElementById(`mov_${area}_${t}_e`)?.value)||0;
+      const r=parseInt(document.getElementById(`mov_${areaKey}_${t}_r`)?.value)||0;
+      const i=parseInt(document.getElementById(`mov_${areaKey}_${t}_i`)?.value)||0;
+      const e=parseInt(document.getElementById(`mov_${areaKey}_${t}_e`)?.value)||0;
       const existing=tableroData[`${area}_${t}`];
       if(existing) ops.push(db.from('movimientos_turno').update({recibo:r,ingresos:i,egresos:e,entrego:r+i-e}).eq('id',existing.id));
       else ops.push(db.from('movimientos_turno').insert({fecha:currentFecha,turno:t,servicio:area,recibo:r,ingresos:i,egresos:e,entrego:r+i-e}));
@@ -251,55 +268,88 @@ async function guardarTablero(){
 }
 
 function triClass(t){const m={'Rojo':'R','Naranja':'N','Amarillo':'A','Verde':'V'};return `triaje-${m[t]||'V'}`;}
-function icoChk(val,ico,field,camaId){return `<span class="chk-ico ${val?'':'off'}" onclick="toggleField('${camaId}','${field}')">${ico}</span>`;}
+
+function taCell(val, camaId, field){
+  return `<textarea class="input-cell" rows="1"
+    onchange="updateField('${camaId}','${field}',this.value)"
+    oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
+    >${val||''}</textarea>`;
+}
 
 function renderCenso(){
   const tbody=document.getElementById('tbody');
   const q=(document.getElementById('search')?.value||'').toLowerCase();
   const rows=allRows.filter(r=>!q||(r.nombre_paciente||'').toLowerCase().includes(q));
-  if(!rows.length){tbody.innerHTML='<tr><td colspan="25" style="text-align:center;padding:24px;color:var(--texto-3);">Sin camas</td></tr>';return;}
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="24" style="text-align:center;padding:24px;color:var(--texto-3);">Sin camas</td></tr>';return;}
+
+  const totalCols=23;
   tbody.innerHTML=rows.map(r=>{
     const vacio=!r.nombre_paciente;
     const e=enfData[r.id]||{};
-    if(vacio) return `<tr style="opacity:.5;"><td class="col-cama"><span class="cama-lbl">${r.numero_cama}</span></td><td colspan="23"><span class="empty-cell">— disponible —</span></td><td></td></tr>`;
-    return `<tr>
-      <td class="col-cama"><span class="cama-lbl">${r.numero_cama}</span></td>
-      <td style="font-size:10px;font-weight:500;" title="${r.nombre_paciente}">${trunc(r.nombre_paciente,18)}</td>
-      <td>${r.sexo||''}</td>
-      <td style="text-align:center;">${r.edad||''}</td>
-      <td><span class="${triClass(r.triaje)}">${r.triaje||''}</span></td>
-      <td title="${r.diagnostico||''}" style="font-size:10px;">${trunc(r.diagnostico,25)}</td>
-      <td style="text-align:center;">${icoChk(e.estudios_lab,'🧪','estudios_lab',r.id)}</td>
-      <td style="text-align:center;">${icoChk(e.estudios_imagen,'🖼','estudios_imagen',r.id)}</td>
-      <td style="text-align:center;">${icoChk(e.hem_cu,'🩸','hem_cu',r.id)}</td>
-      <td style="text-align:center;">${icoChk(e.rx,'☢️','rx',r.id)}</td>
-      <td style="text-align:center;">${icoChk(e.curaciones,'🩹','curaciones',r.id)}</td>
-      <td style="text-align:center;">${icoChk(e.cvc,'💉','cvc',r.id)}</td>
-      <td class="editable"><input class="input-cell" value="${e.infusiones||''}" placeholder="CVP…" onchange="updateField('${r.id}','infusiones',this.value)"/></td>
-      <td style="text-align:center;">${icoChk(e.ventilador_mecanico,'🌬','ventilador_mecanico',r.id)}</td>
-      <td style="text-align:center;">${icoChk(e.cpap,'😷','cpap',r.id)}</td>
-      <td class="editable"><input class="input-cell" value="${e.oxigeno_litros||''}" placeholder="3L" onchange="updateField('${r.id}','oxigeno_litros',this.value)"/></td>
-      <td class="editable"><input class="input-cell" value="${e.soluciones_parenterales||''}" placeholder="SS 500" onchange="updateField('${r.id}','soluciones_parenterales',this.value)"/></td>
-      <td class="editable"><input class="input-cell" value="${e.glucosa||''}" placeholder="PRN" onchange="updateField('${r.id}','glucosa',this.value)"/></td>
-      <td class="editable"><input class="input-cell" value="${e.diuresis||''}" placeholder="1500" onchange="updateField('${r.id}','diuresis',this.value)"/></td>
-      <td class="editable"><input class="input-cell" value="${e.antibioticos||''}" placeholder="Pip+Tazo…" onchange="updateField('${r.id}','antibioticos',this.value)"/></td>
-      <td class="editable"><input class="input-cell" value="${e.inter_consulta||''}" placeholder="Cardio…" onchange="updateField('${r.id}','inter_consulta',this.value)"/></td>
-      <td class="editable"><input class="input-cell" value="${e.cuidados_especiales||''}" placeholder="SVPT…" onchange="updateField('${r.id}','cuidados_especiales',this.value)"/></td>
-      <td class="editable"><input class="input-cell" value="${e.pendientes||''}" placeholder="Pendientes…" onchange="updateField('${r.id}','pendientes',this.value)"/></td>
-      <td><button class="save-row-btn" onclick="saveRow('${r.id}')">💾</button></td>
+    if(vacio){
+      return `<tr data-id="${r.id}" data-cama="${r.numero_cama}"
+        ondragover="onDragOverEnf(event)" ondrop="onDropEnf(event)" ondragleave="this.classList.remove('drag-over-enf')"
+        style="opacity:.5;">
+        <td class="col-cama"><span class="cama-lbl">${r.numero_cama}</span></td>
+        <td colspan="${totalCols}"><span class="empty-cell">— disponible —</span></td>
+        <td></td>
+      </tr>`;
+    }
+    return `
+    <tr data-id="${r.id}" data-cama="${r.numero_cama}" draggable="true"
+      ondragstart="onDragStartEnf(event)" ondragover="onDragOverEnf(event)"
+      ondrop="onDropEnf(event)" ondragleave="this.classList.remove('drag-over-enf')"
+      ondblclick="openModalUrg('${r.id}')"
+      style="border-bottom:none;">
+      <td class="col-cama" style="vertical-align:middle;border-bottom:none;" rowspan="2">
+        <span class="drag-handle-enf">⠿</span>
+        <span class="cama-lbl">${r.numero_cama}</span>
+      </td>
+      <td style="vertical-align:middle;border-bottom:none;"><span class="${triClass(r.triaje)}">${r.triaje||''}</span></td>
+      <td style="font-size:11px;font-weight:600;vertical-align:middle;border-bottom:none;white-space:nowrap;">${r.nombre_paciente||''}</td>
+      <td style="font-size:9px;font-family:'IBM Plex Mono',monospace;vertical-align:middle;border-bottom:none;">${r.cedula||''}</td>
+      <td style="text-align:center;vertical-align:middle;border-bottom:none;">${r.edad||''}</td>
+      <td style="text-align:center;vertical-align:middle;border-bottom:none;">${r.sexo||''}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.estudios_lab,r.id,'estudios_lab')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.estudios_imagen,r.id,'estudios_imagen')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.hem_cu,r.id,'hem_cu')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.rx,r.id,'rx')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.curaciones,r.id,'curaciones')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.cvc,r.id,'cvc')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.infusiones,r.id,'infusiones')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.ventilador_mecanico,r.id,'ventilador_mecanico')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.cpap,r.id,'cpap')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.oxigeno_litros,r.id,'oxigeno_litros')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.soluciones_parenterales,r.id,'soluciones_parenterales')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.glucosa,r.id,'glucosa')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.diuresis,r.id,'diuresis')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.antibioticos,r.id,'antibioticos')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.inter_consulta,r.id,'inter_consulta')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.cuidados_especiales,r.id,'cuidados_especiales')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.pendientes,r.id,'pendientes')}</td>
+      <td style="vertical-align:middle;border-bottom:none;">
+        <button class="save-row-btn" onclick="saveRow('${r.id}');event.stopPropagation();">💾</button>
+      </td>
+    </tr>
+    <tr data-id="${r.id}" data-cama="${r.numero_cama}"
+      style="border-bottom:1px solid var(--gris-borde);">
+      <td colspan="${totalCols}"
+        style="background:#F8F7F4;padding:3px 10px 5px;font-size:10px;color:var(--texto-2);line-height:1.4;white-space:normal;word-break:break-word;">
+        <span style="font-weight:600;color:var(--texto-3);font-size:9px;text-transform:uppercase;letter-spacing:.04em;margin-right:6px;">Dx:</span>${r.diagnostico||'—'}
+      </td>
     </tr>`;
   }).join('');
+
+  setTimeout(()=>{
+    document.querySelectorAll('#tbody .input-cell').forEach(ta=>{
+      ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';
+    });
+  },50);
 }
 
 function updateField(camaId,field,value){
   if(!enfData[camaId]) enfData[camaId]={cama_id:camaId,fecha:currentFecha,turno:currentTurno};
   enfData[camaId][field]=value;
-}
-
-async function toggleField(camaId,field){
-  if(!enfData[camaId]) enfData[camaId]={cama_id:camaId,fecha:currentFecha,turno:currentTurno};
-  enfData[camaId][field]=!enfData[camaId][field];
-  await saveRow(camaId);
 }
 
 async function saveRow(camaId){
@@ -308,17 +358,11 @@ async function saveRow(camaId){
   const existing=enfData[camaId];
   const payload={
     ...existing,
-    cama_id:camaId,
-    numero_cama:cama.numero_cama,
-    fecha:currentFecha,
-    turno:currentTurno,
-    nombre_paciente:cama.nombre_paciente,
-    cedula:cama.cedula,
-    edad:cama.edad,
-    sexo:cama.sexo,
-    servicio:cama.servicio,
-    diagnostico:cama.diagnostico,
-    triaje:cama.triaje,
+    cama_id:camaId, numero_cama:cama.numero_cama,
+    fecha:currentFecha, turno:currentTurno,
+    nombre_paciente:cama.nombre_paciente, cedula:cama.cedula,
+    edad:cama.edad, sexo:cama.sexo, servicio:cama.servicio,
+    diagnostico:cama.diagnostico, triaje:cama.triaje,
   };
   let error;
   if(existing?.id){
@@ -335,6 +379,105 @@ async function saveRow(camaId){
 async function guardarTodo(){
   for(const c of allRows.filter(r=>r.nombre_paciente)) await saveRow(c.id);
   showToast('Todo guardado','success');
+}
+
+// Drag & drop
+function onDragStartEnf(e){dragSrcEnf=e.currentTarget.dataset.id;e.currentTarget.classList.add('dragging-enf');e.dataTransfer.effectAllowed='move';}
+function onDragOverEnf(e){e.preventDefault();e.currentTarget.classList.add('drag-over-enf');}
+async function onDropEnf(e){
+  e.preventDefault();e.currentTarget.classList.remove('drag-over-enf');
+  const destId=e.currentTarget.dataset.id, destCama=e.currentTarget.dataset.cama;
+  if(!dragSrcEnf||dragSrcEnf===destId)return;
+  const src=allRows.find(r=>r.id===dragSrcEnf), dest=allRows.find(r=>r.id===destId);
+  if(!src)return;
+  const campos=['nombre_paciente','sexo','servicio','manejo_conjunto','cedula','tipo_dh','edad','fecha_ingreso','diagnostico','pendientes','triaje','ventilador','aislado','caso_riesgo'];
+  const bools=['ventilador','aislado','caso_riesgo'];
+  const srcData={},destData={};
+  campos.forEach(c=>{srcData[c]=dest?dest[c]:null;destData[c]=src[c];});
+  bools.forEach(c=>{if(!srcData[c])srcData[c]=false;if(!destData[c])destData[c]=false;});
+  await db.from('camas_urgencias').update(srcData).eq('id',dragSrcEnf);
+  await db.from('camas_urgencias').update(destData).eq('id',destId);
+  showToast(`Movido a ${destCama}`,'success');
+  dragSrcEnf=null; await loadAll();
+}
+
+// Modal simple para urgencias
+function openModalUrg(id){
+  const r=allRows.find(x=>x.id===id);
+  if(!r||!r.nombre_paciente)return;
+  showToast(`Doble clic: ${r.nombre_paciente} — edita directamente en las celdas`,'');
+}
+
+// ── HACER CORTE ──
+function hacerCorte(){
+  const turnoLabel={'M':'Matutino','V':'Vespertino','N':'Nocturno'}[currentTurno]||currentTurno;
+  const fecha=document.getElementById('fecha-censo').value||currentFecha;
+  const ocupadas=allRows.filter(r=>r.nombre_paciente);
+  const filas=ocupadas.map(r=>{
+    const e=enfData[r.id]||{};
+    return `<tr>
+      <td style="font-weight:700;">${r.numero_cama}</td>
+      <td><span style="font-size:9px;padding:1px 5px;border-radius:3px;background:${r.triaje==='Rojo'?'#FCEBEB':r.triaje==='Naranja'?'#FAEEDA':'#EAF3DE'};color:${r.triaje==='Rojo'?'#A32D2D':r.triaje==='Naranja'?'#854F0B':'#3B6D11'};">${r.triaje||''}</span></td>
+      <td style="font-weight:600;">${r.nombre_paciente||''}</td>
+      <td style="font-size:10px;">${r.cedula||''}</td>
+      <td style="text-align:center;">${r.edad||''}</td>
+      <td style="font-size:10px;color:#555;">${r.diagnostico||''}</td>
+      <td style="font-size:10px;">${e.infusiones||''}</td>
+      <td style="font-size:10px;">${e.antibioticos||''}</td>
+      <td style="font-size:10px;">${e.cuidados_especiales||''}</td>
+      <td style="font-size:10px;">${e.pendientes||''}</td>
+    </tr>`;
+  }).join('');
+
+  const win=window.open('','_blank','width=1100,height=800');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <title>Corte de Enfermería — Urgencias</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:11px;margin:16px;color:#111;}
+    h2{font-size:14px;margin:0 0 2px;} h3{font-size:12px;margin:0 0 10px;color:#555;}
+    .encab{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;border-bottom:2px solid #E24B4A;padding-bottom:8px;}
+    .stats{display:flex;gap:24px;margin-bottom:12px;}
+    .stat{background:#F1EFE8;padding:6px 14px;border-radius:6px;text-align:center;}
+    .stat .n{font-size:22px;font-weight:700;color:#E24B4A;} .stat .l{font-size:10px;color:#555;}
+    table{width:100%;border-collapse:collapse;font-size:10px;}
+    th{background:#E24B4A;color:#fff;padding:5px 6px;text-align:left;font-size:9px;}
+    td{padding:4px 6px;border-bottom:1px solid #E5E5E0;vertical-align:top;}
+    tr:nth-child(even) td{background:#F8F7F4;}
+    @media print{body{margin:8px;}}
+  </style></head><body>
+  <div class="encab">
+    <div>
+      <h2>Clínica Hospital Dr. Miguel Trejo Ochoa</h2>
+      <h3>Corte de Enfermería — Urgencias</h3>
+    </div>
+    <div style="text-align:right;font-size:11px;">
+      <div><b>Fecha:</b> ${fecha}</div>
+      <div><b>Turno:</b> ${turnoLabel}</div>
+      <div><b>Generado:</b> ${new Date().toLocaleTimeString('es-MX')}</div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="n">${allRows.length}</div><div class="l">Total camas</div></div>
+    <div class="stat"><div class="n" style="color:#854F0B;">${ocupadas.length}</div><div class="l">Ocupadas</div></div>
+    <div class="stat"><div class="n" style="color:#3B6D11;">${allRows.length-ocupadas.length}</div><div class="l">Disponibles</div></div>
+    <div class="stat"><div class="n" style="color:#A32D2D;">${allRows.filter(r=>r.triaje==='Rojo').length}</div><div class="l">Triaje Rojo</div></div>
+  </div>
+  <table>
+    <thead><tr>
+      <th>Cama</th><th>Triaje</th><th>Nombre</th><th>Cédula</th>
+      <th>Edad</th><th>Diagnóstico</th>
+      <th>VVP/Infusiones</th><th>Antibióticos</th>
+      <th>Cuidados Especiales</th><th>Pendientes</th>
+    </tr></thead>
+    <tbody>${filas}</tbody>
+  </table>
+  <div style="margin-top:30px;display:flex;gap:60px;">
+    <div style="text-align:center;flex:1;"><div style="border-top:1px solid #000;padding-top:4px;font-size:10px;">Firma Jefa de Enfermería</div></div>
+    <div style="text-align:center;flex:1;"><div style="border-top:1px solid #000;padding-top:4px;font-size:10px;">Firma Enfermera Responsable</div></div>
+  </div>
+  <script>window.onload=()=>window.print();<\/script>
+  </body></html>`);
+  win.document.close();
 }
 </script>
 </body>

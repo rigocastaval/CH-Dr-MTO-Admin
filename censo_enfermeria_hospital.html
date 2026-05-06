@@ -28,8 +28,14 @@
     .turno-btn{padding:6px 16px;border-radius:20px;border:1px solid var(--gris-borde);background:var(--surface);font-size:12px;font-weight:500;cursor:pointer;color:var(--texto-2);transition:all .15s;}
     .turno-btn.active{background:var(--azul);color:#fff;border-color:var(--azul);}
 
-    /* ── TABLA CENSO ── */
-    td.col-cama,th.col-cama{position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:2px 0 5px rgba(0,0,0,.07);}
+    /* Columna cama — siempre visible, ancho mínimo garantizado */
+    td.col-cama,th.col-cama{
+      position:sticky;left:0;z-index:2;
+      background:var(--surface);
+      box-shadow:2px 0 5px rgba(0,0,0,.07);
+      min-width:62px;
+      white-space:nowrap;
+    }
     thead th.col-cama{background:var(--bg);z-index:3;}
     .th-group-label{background:#F1EFE8;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--texto-2);text-align:center;padding:3px 4px;border-bottom:1px solid var(--gris-borde);}
 
@@ -119,6 +125,7 @@
       </div>
       <input type="date" id="fecha-censo" style="padding:6px 10px;border:1px solid var(--gris-borde);border-radius:var(--radio);font-size:12px;background:var(--bg);"/>
       <button class="btn btn-sm btn-primary" onclick="guardarTodo()">💾 Guardar todo</button>
+      <button class="btn btn-sm" style="background:#6366f1;color:#fff;border-color:#6366f1;" onclick="hacerCorte()">📄 Hacer corte</button>
       <button class="btn btn-sm" onclick="window.print()">🖨️ Imprimir</button>
     </div>
 
@@ -455,25 +462,25 @@ function renderCenso(){
       <td style="font-size:9px;font-family:'IBM Plex Mono',monospace;vertical-align:middle;border-bottom:none;">${r.cedula||''}</td>
       <td style="text-align:center;vertical-align:middle;border-bottom:none;">${r.edad||''}</td>
       <td style="text-align:center;vertical-align:middle;border-bottom:none;">${r.sexo||''}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.estudios_lab,'BH, QS, EGO…',r.id,'estudios_lab')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.estudios_imagen,'Rx Tórax, USG…',r.id,'estudios_imagen')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.hem_cu,'2 hemocultivos…',r.id,'hem_cu')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.rx,'PA y Lat…',r.id,'rx')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.curaciones,'Curación c/24h…',r.id,'curaciones')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.cvc,'CVC subclavio…',r.id,'cvc')}</td>
-      <td class="col-vvp editable" style="border-bottom:none;">${taCell(e.infusiones,'CVP#18 30-04…',r.id,'infusiones')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.ventilador_mecanico,'SIMV 14x500…',r.id,'ventilador_mecanico')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.cpap,'CPAP 8 cmH2O…',r.id,'cpap')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.oxigeno_litros,'3L/min PRN…',r.id,'oxigeno_litros')}</td>
-      <td class="col-sol editable" style="border-bottom:none;">${taCell(e.soluciones_parenterales,'SS 500 P/24…',r.id,'soluciones_parenterales')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.glucosa,'PRN c/6h…',r.id,'glucosa')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.diuresis,'1500ml/24h…',r.id,'diuresis')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.lactancia,'LM exclusiva…',r.id,'lactancia')}</td>
-      <td class="col-abx editable" style="border-bottom:none;">${taCell(e.antibioticos,'Pip+Tazo 4.5g c/8h…',r.id,'antibioticos')}</td>
-      <td class="col-ic editable" style="border-bottom:none;">${taCell(e.inter_consulta,'Cardiología…',r.id,'inter_consulta')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.bano_general,'Baño en cama…',r.id,'bano_general')}</td>
-      <td class="col-ce editable" style="border-bottom:none;">${taCell(e.cuidados_especiales,'SVPT, CGE…',r.id,'cuidados_especiales')}</td>
-      <td class="col-pend editable" style="border-bottom:none;">${taCell(e.pendientes,'Pendientes…',r.id,'pendientes')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.estudios_lab,'',r.id,'estudios_lab')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.estudios_imagen,'',r.id,'estudios_imagen')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.hem_cu,'',r.id,'hem_cu')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.rx,'',r.id,'rx')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.curaciones,'',r.id,'curaciones')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.cvc,'',r.id,'cvc')}</td>
+      <td class="col-vvp editable" style="border-bottom:none;">${taCell(e.infusiones,'',r.id,'infusiones')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.ventilador_mecanico,'',r.id,'ventilador_mecanico')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.cpap,'',r.id,'cpap')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.oxigeno_litros,'',r.id,'oxigeno_litros')}</td>
+      <td class="col-sol editable" style="border-bottom:none;">${taCell(e.soluciones_parenterales,'',r.id,'soluciones_parenterales')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.glucosa,'',r.id,'glucosa')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.diuresis,'',r.id,'diuresis')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.lactancia,'',r.id,'lactancia')}</td>
+      <td class="col-abx editable" style="border-bottom:none;">${taCell(e.antibioticos,'',r.id,'antibioticos')}</td>
+      <td class="col-ic editable" style="border-bottom:none;">${taCell(e.inter_consulta,'',r.id,'inter_consulta')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.bano_general,'',r.id,'bano_general')}</td>
+      <td class="col-ce editable" style="border-bottom:none;">${taCell(e.cuidados_especiales,'',r.id,'cuidados_especiales')}</td>
+      <td class="col-pend editable" style="border-bottom:none;">${taCell(e.pendientes,'',r.id,'pendientes')}</td>
       <td style="vertical-align:middle;border-bottom:none;">
         <button class="save-row-btn" onclick="saveRow('${r.id}');event.stopPropagation();">💾</button>
       </td>
@@ -648,6 +655,85 @@ async function saveModal(){
   await saveRow(editingCamaId);
   closeModal();
   renderCenso();
+}
+
+// ── HACER CORTE ──
+function hacerCorte(){
+  const turnoLabel={'M':'Matutino','V':'Vespertino','N':'Nocturno'}[currentTurno]||currentTurno;
+  const fecha=document.getElementById('fecha-censo').value||currentFecha;
+  const ocupadas=allRows.filter(r=>r.nombre_paciente);
+  const disponibles=allRows.filter(r=>!r.nombre_paciente);
+
+  const filas=ocupadas.map(r=>{
+    const e=enfData[r.id]||{};
+    const sp=r.servicio||'';
+    return `<tr>
+      <td style="font-weight:700;white-space:nowrap;">${r.numero_cama}</td>
+      <td style="font-size:10px;">${sp}</td>
+      <td style="font-weight:600;">${r.nombre_paciente||''}</td>
+      <td style="font-size:10px;">${r.cedula||''}</td>
+      <td style="text-align:center;">${r.edad||''}</td>
+      <td style="text-align:center;">${r.sexo||''}</td>
+      <td style="font-size:10px;color:#555;">${r.diagnostico||''}</td>
+      <td style="font-size:10px;">${e.infusiones||''}</td>
+      <td style="font-size:10px;">${e.antibioticos||''}</td>
+      <td style="font-size:10px;">${e.cuidados_especiales||''}</td>
+      <td style="font-size:10px;">${e.pendientes||''}</td>
+    </tr>`;
+  }).join('');
+
+  const win=window.open('','_blank','width=1100,height=800');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <title>Corte de Enfermería — Hospital</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:11px;margin:16px;color:#111;}
+    h2{font-size:14px;margin:0 0 2px;} h3{font-size:12px;margin:0 0 10px;color:#555;}
+    .encab{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;border-bottom:2px solid #185FA5;padding-bottom:8px;}
+    .stats{display:flex;gap:24px;margin-bottom:12px;}
+    .stat{background:#F1EFE8;padding:6px 14px;border-radius:6px;text-align:center;}
+    .stat .n{font-size:22px;font-weight:700;color:#185FA5;} .stat .l{font-size:10px;color:#555;}
+    table{width:100%;border-collapse:collapse;font-size:10px;}
+    th{background:#185FA5;color:#fff;padding:5px 6px;text-align:left;font-size:9px;}
+    td{padding:4px 6px;border-bottom:1px solid #E5E5E0;vertical-align:top;}
+    tr:nth-child(even) td{background:#F8F7F4;}
+    @media print{body{margin:8px;}}
+  </style></head><body>
+  <div class="encab">
+    <div>
+      <h2>Clínica Hospital Dr. Miguel Trejo Ochoa</h2>
+      <h3>Corte de Enfermería — Hospitalización</h3>
+    </div>
+    <div style="text-align:right;font-size:11px;">
+      <div><b>Fecha:</b> ${fecha}</div>
+      <div><b>Turno:</b> ${turnoLabel}</div>
+      <div><b>Generado:</b> ${new Date().toLocaleTimeString('es-MX')}</div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="n">${allRows.length}</div><div class="l">Total camas</div></div>
+    <div class="stat"><div class="n" style="color:#854F0B;">${ocupadas.length}</div><div class="l">Ocupadas</div></div>
+    <div class="stat"><div class="n" style="color:#3B6D11;">${disponibles.length}</div><div class="l">Disponibles</div></div>
+  </div>
+  <table>
+    <thead><tr>
+      <th>Cama</th><th>Serv.</th><th>Nombre</th><th>Cédula</th>
+      <th>Edad</th><th>S</th><th>Diagnóstico</th>
+      <th>VVP/Infusiones</th><th>Antibióticos</th>
+      <th>Cuidados Especiales</th><th>Pendientes</th>
+    </tr></thead>
+    <tbody>${filas}</tbody>
+  </table>
+  <div style="margin-top:30px;display:flex;gap:60px;">
+    <div style="text-align:center;flex:1;">
+      <div style="border-top:1px solid #000;padding-top:4px;font-size:10px;">Firma Jefa de Enfermería</div>
+    </div>
+    <div style="text-align:center;flex:1;">
+      <div style="border-top:1px solid #000;padding-top:4px;font-size:10px;">Firma Enfermera Responsable</div>
+    </div>
+  </div>
+  <script>window.onload=()=>window.print();<\/script>
+  </body></html>`);
+  win.document.close();
 }
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
