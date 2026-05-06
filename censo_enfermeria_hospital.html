@@ -435,54 +435,54 @@ function renderCenso(){
       </tr>`;
     }
 
-    // Celda nombre + diagnóstico debajo
-    const nombreDx=`
-      <div style="font-size:11px;font-weight:600;color:var(--texto);">${r.nombre_paciente||''}</div>
-      <div style="font-size:9px;color:var(--texto-2);margin-top:3px;line-height:1.3;">${r.diagnostico||''}</div>
-    `;
-
-    return `<tr data-id="${r.id}" data-cama="${r.numero_cama}" draggable="true"
+    // FILA 1: datos del paciente + campos clínicos
+    // FILA 2: diagnóstico en colspan completo, fondo sutil
+    const totalCols=25; // total columnas incluyendo cama
+    return `
+    <tr data-id="${r.id}" data-cama="${r.numero_cama}" draggable="true"
       ondragstart="onDragStartEnf(event)"
       ondragover="onDragOverEnf(event)"
       ondrop="onDropEnf(event)"
       ondragleave="this.classList.remove('drag-over-enf')"
-      ondblclick="openModal('${r.id}')">
-      <!-- Cama fija -->
-      <td class="col-cama" style="white-space:nowrap;vertical-align:top;padding-top:8px;">
+      ondblclick="openModal('${r.id}')"
+      style="border-bottom:none;">
+      <td class="col-cama" style="white-space:nowrap;vertical-align:middle;border-bottom:none;" rowspan="2">
         <span class="drag-handle-enf" title="Arrastrar">⠿</span>
         <span class="cama-lbl">${r.numero_cama}</span>
       </td>
-      <td style="vertical-align:top;">${sp}</td>
-      <td style="vertical-align:top;">${nombreDx}</td>
-      <td style="font-size:9px;font-family:'IBM Plex Mono',monospace;vertical-align:top;">${r.cedula||''}</td>
-      <td style="text-align:center;vertical-align:top;">${r.edad||''}</td>
-      <td style="text-align:center;vertical-align:top;">${r.sexo||''}</td>
-      <!-- Cuatro paquetes — TODOS texto libre -->
-      <td class="editable">${taCell(e.estudios_lab,'Ej: BH, QS, EGO…',r.id,'estudios_lab')}</td>
-      <td class="editable">${taCell(e.estudios_imagen,'Ej: Rx Tórax, USG…',r.id,'estudios_imagen')}</td>
-      <td class="editable">${taCell(e.hem_cu,'Ej: 2 hemocultivos…',r.id,'hem_cu')}</td>
-      <td class="editable">${taCell(e.rx,'Ej: Rx PA y Lat…',r.id,'rx')}</td>
-      <td class="editable">${taCell(e.curaciones,'Ej: Curación c/24h…',r.id,'curaciones')}</td>
-      <td class="editable">${taCell(e.cvc,'Ej: CVC subclavio Dcho…',r.id,'cvc')}</td>
-      <td class="col-vvp editable">${taCell(e.infusiones,'CVP#18 30-04 TM…',r.id,'infusiones')}</td>
-      <!-- Respiratorio — texto libre -->
-      <td class="editable">${taCell(e.ventilador_mecanico,'Ej: VM SIMV 14x500…',r.id,'ventilador_mecanico')}</td>
-      <td class="editable">${taCell(e.cpap,'Ej: CPAP 8 cmH2O…',r.id,'cpap')}</td>
-      <td class="editable">${taCell(e.oxigeno_litros,'Ej: 3L/min PRN…',r.id,'oxigeno_litros')}</td>
-      <!-- DPCA / Líquidos -->
-      <td class="col-sol editable">${taCell(e.soluciones_parenterales,'SS 500 P/24…',r.id,'soluciones_parenterales')}</td>
-      <td class="editable">${taCell(e.glucosa,'PRN c/6h…',r.id,'glucosa')}</td>
-      <td class="editable">${taCell(e.diuresis,'1500ml/24h…',r.id,'diuresis')}</td>
-      <td class="editable">${taCell(e.lactancia,'Ej: LM exclusiva…',r.id,'lactancia')}</td>
-      <!-- Antibióticos -->
-      <td class="col-abx editable">${taCell(e.antibioticos,'Pip+Tazo 4.5g c/8h…',r.id,'antibioticos')}</td>
-      <!-- Evaluación -->
-      <td class="col-ic editable">${taCell(e.inter_consulta,'Cardiología…',r.id,'inter_consulta')}</td>
-      <td class="editable">${taCell(e.bano_general,'Ej: Baño en cama…',r.id,'bano_general')}</td>
-      <td class="col-ce editable">${taCell(e.cuidados_especiales,'SVPT, CGE, C/D…',r.id,'cuidados_especiales')}</td>
-      <td class="col-pend editable">${taCell(e.pendientes,'Pendientes / Obs alta…',r.id,'pendientes')}</td>
-      <td style="vertical-align:top;">
+      <td style="vertical-align:middle;border-bottom:none;">${sp}</td>
+      <td style="font-size:11px;font-weight:600;vertical-align:middle;border-bottom:none;white-space:nowrap;">${r.nombre_paciente||''}</td>
+      <td style="font-size:9px;font-family:'IBM Plex Mono',monospace;vertical-align:middle;border-bottom:none;">${r.cedula||''}</td>
+      <td style="text-align:center;vertical-align:middle;border-bottom:none;">${r.edad||''}</td>
+      <td style="text-align:center;vertical-align:middle;border-bottom:none;">${r.sexo||''}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.estudios_lab,'BH, QS, EGO…',r.id,'estudios_lab')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.estudios_imagen,'Rx Tórax, USG…',r.id,'estudios_imagen')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.hem_cu,'2 hemocultivos…',r.id,'hem_cu')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.rx,'PA y Lat…',r.id,'rx')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.curaciones,'Curación c/24h…',r.id,'curaciones')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.cvc,'CVC subclavio…',r.id,'cvc')}</td>
+      <td class="col-vvp editable" style="border-bottom:none;">${taCell(e.infusiones,'CVP#18 30-04…',r.id,'infusiones')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.ventilador_mecanico,'SIMV 14x500…',r.id,'ventilador_mecanico')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.cpap,'CPAP 8 cmH2O…',r.id,'cpap')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.oxigeno_litros,'3L/min PRN…',r.id,'oxigeno_litros')}</td>
+      <td class="col-sol editable" style="border-bottom:none;">${taCell(e.soluciones_parenterales,'SS 500 P/24…',r.id,'soluciones_parenterales')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.glucosa,'PRN c/6h…',r.id,'glucosa')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.diuresis,'1500ml/24h…',r.id,'diuresis')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.lactancia,'LM exclusiva…',r.id,'lactancia')}</td>
+      <td class="col-abx editable" style="border-bottom:none;">${taCell(e.antibioticos,'Pip+Tazo 4.5g c/8h…',r.id,'antibioticos')}</td>
+      <td class="col-ic editable" style="border-bottom:none;">${taCell(e.inter_consulta,'Cardiología…',r.id,'inter_consulta')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.bano_general,'Baño en cama…',r.id,'bano_general')}</td>
+      <td class="col-ce editable" style="border-bottom:none;">${taCell(e.cuidados_especiales,'SVPT, CGE…',r.id,'cuidados_especiales')}</td>
+      <td class="col-pend editable" style="border-bottom:none;">${taCell(e.pendientes,'Pendientes…',r.id,'pendientes')}</td>
+      <td style="vertical-align:middle;border-bottom:none;">
         <button class="save-row-btn" onclick="saveRow('${r.id}');event.stopPropagation();">💾</button>
+      </td>
+    </tr>
+    <tr data-id="${r.id}" data-cama="${r.numero_cama}"
+      style="border-bottom:1px solid var(--gris-borde);">
+      <td colspan="${totalCols-1}"
+        style="background:#F8F7F4;padding:3px 10px 5px 10px;font-size:10px;color:var(--texto-2);line-height:1.4;white-space:normal;word-break:break-word;">
+        <span style="font-weight:600;color:var(--texto-3);font-size:9px;text-transform:uppercase;letter-spacing:.04em;margin-right:6px;">Dx:</span>${r.diagnostico||'—'}
       </td>
     </tr>`;
   }).join('');
