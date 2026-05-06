@@ -56,6 +56,20 @@
     .triaje-N{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:#FAEEDA;color:var(--naranja);}
     .triaje-A{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:#FFF9E6;color:#BA7517;}
     .triaje-V{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:var(--verde-lt);color:var(--verde);}
+  
+    /* Columna cama — ancho automático, nunca se corta */
+    td.col-cama, th.col-cama {
+      width: auto !important;
+      min-width: fit-content !important;
+      white-space: nowrap !important;
+    }
+    /* Encabezados siempre visibles al hacer scroll vertical */
+    .tbl-wrap { max-height: 70vh; overflow-y: auto; overflow-x: auto; }
+    .tbl-wrap thead th { position: sticky; top: 0; z-index: 4; }
+    .tbl-wrap thead th.col-cama { position: sticky; left: 0; top: 0; z-index: 5; }
+    /* Para censos de enfermería */
+    #censo-table thead th { position: sticky; top: 0; z-index: 4; }
+    #censo-table thead th.col-cama { position: sticky; left: 0; top: 0; z-index: 5; }
   </style>
 </head>
 <body>
