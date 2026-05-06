@@ -118,20 +118,25 @@
     <!-- SELECTOR TURNO Y FECHA -->
     <div class="turno-bar">
       <div style="font-size:13px;font-weight:600;color:var(--texto);">Censo de Enfermería — Hospitalización</div>
-      <div style="display:flex;gap:6px;margin-left:8px;">
-        <button class="turno-btn active" id="tb-M" onclick="setTurno('M',this)">Matutino (M)</button>
-        <button class="turno-btn" id="tb-V" onclick="setTurno('V',this)">Vespertino (V)</button>
-        <button class="turno-btn" id="tb-N" onclick="setTurno('N',this)">Nocturno (N)</button>
+      <div style="display:flex;gap:6px;margin-left:8px;flex-wrap:wrap;">
+        <button class="turno-btn active" id="tb-M" onclick="setTurno('M',this)">Matutino</button>
+        <button class="turno-btn" id="tb-V" onclick="setTurno('V',this)">Vespertino</button>
+        <button class="turno-btn" id="tb-N" onclick="setTurno('N',this)">Nocturno</button>
+        <button class="turno-btn" id="tb-JD" onclick="setTurno('JD',this)">Jornada Diurna</button>
+        <button class="turno-btn" id="tb-JN" onclick="setTurno('JN',this)">Jornada Nocturna</button>
       </div>
       <input type="date" id="fecha-censo" style="padding:6px 10px;border:1px solid var(--gris-borde);border-radius:var(--radio);font-size:12px;background:var(--bg);"/>
       <button class="btn btn-sm btn-primary" onclick="guardarTodo()">💾 Guardar todo</button>
-      <button class="btn btn-sm" style="background:#6366f1;color:#fff;border-color:#6366f1;" onclick="hacerCorte()">📄 Hacer corte</button>
+      <button class="btn btn-sm" style="background:#6366f1;color:#fff;border-color:#6366f1;" onclick="openCorteModal()">📄 Hacer corte</button>
       <button class="btn btn-sm" onclick="window.print()">🖨️ Imprimir</button>
     </div>
 
     <!-- TABLERO MOVIMIENTOS -->
     <div class="tablero">
-      <div class="tablero-title">📋 Movimientos por turno</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+        <div class="tablero-title" style="margin:0;">📋 Movimientos por turno</div>
+        <div style="font-size:11px;color:var(--texto-3);">Se actualiza automáticamente al hacer corte</div>
+      </div>
       <div class="tablero-grid">
         <table class="tablero-table">
           <thead>
@@ -140,8 +145,12 @@
               <th colspan="3" class="th-group">Matutino</th>
               <th colspan="3" class="th-group">Vespertino</th>
               <th colspan="3" class="th-group">Nocturno</th>
+              <th colspan="3" class="th-group">Jornada Diurna</th>
+              <th colspan="3" class="th-group">Jornada Nocturna</th>
             </tr>
             <tr>
+              <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
+              <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
               <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
               <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
               <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
@@ -149,9 +158,6 @@
           </thead>
           <tbody id="tablero-tbody"></tbody>
         </table>
-      </div>
-      <div style="margin-top:8px;text-align:right;">
-        <button class="btn btn-sm btn-primary" onclick="guardarTablero()">💾 Guardar tablero</button>
       </div>
     </div>
 
@@ -181,29 +187,29 @@
             </tr>
             <tr>
               <!-- Cuatro paquetes — todos texto libre -->
-              <th style="min-width:80px;">Lab</th>
-              <th style="min-width:80px;">Imagen</th>
-              <th style="min-width:80px;">HemoCultivo</th>
-              <th style="min-width:60px;">RX</th>
-              <th style="min-width:80px;">Curaciones</th>
-              <th style="min-width:80px;">CVC</th>
-              <th style="min-width:120px;">VVP / Infusiones</th>
+              <th style="min-width:80px;" title="Estudios de Laboratorio (BH, QS, EGO, etc.)">Lab</th>
+              <th style="min-width:80px;" title="Estudios de Imagen (Rx, USG, TAC, etc.)">Imagen</th>
+              <th style="min-width:80px;" title="Hemocultivo">HemoCultivo</th>
+              <th style="min-width:60px;" title="Radiografía">RX</th>
+              <th style="min-width:80px;" title="Curaciones de heridas">Curaciones</th>
+              <th style="min-width:80px;" title="Catéter Venoso Central">CVC</th>
+              <th style="min-width:120px;" title="Vía Venosa Periférica / Infusiones">VVP / Infusiones</th>
               <!-- Respiratorio -->
-              <th style="min-width:80px;">Ventilador</th>
-              <th style="min-width:80px;">CPAP</th>
-              <th style="min-width:80px;">O₂</th>
+              <th style="min-width:80px;" title="Ventilador Mecánico">Ventilador</th>
+              <th style="min-width:80px;" title="CPAP — Presión Positiva Continua en la Vía Aérea">CPAP</th>
+              <th style="min-width:80px;" title="Oxígeno suplementario (litros/min)">O₂</th>
               <!-- DPCA -->
-              <th style="min-width:100px;">Sol. Parenterales</th>
-              <th style="min-width:80px;">Glucosa</th>
-              <th style="min-width:80px;">Diuresis</th>
-              <th style="min-width:80px;">Lactancia</th>
+              <th style="min-width:100px;" title="Soluciones Parenterales">Sol. Parenterales</th>
+              <th style="min-width:80px;" title="Control de Glucosa capilar">Glucosa</th>
+              <th style="min-width:80px;" title="Diuresis — medición de orina">Diuresis</th>
+              <th style="min-width:80px;" title="Lactancia materna">Lactancia</th>
               <!-- Medicamentos -->
-              <th style="min-width:130px;">Antibióticos</th>
+              <th style="min-width:130px;" title="Antibióticos / Antimicrobianos">Antibióticos</th>
               <!-- Evaluación -->
-              <th style="min-width:90px;">Interconsulta</th>
-              <th style="min-width:60px;">Baño Gral.</th>
-              <th style="min-width:150px;">Cuidados Especiales</th>
-              <th style="min-width:150px;">Pendientes / Obs. Alta</th>
+              <th style="min-width:90px;" title="Interconsulta con especialidad">Interconsulta</th>
+              <th style="min-width:60px;" title="Baño General">Baño Gral.</th>
+              <th style="min-width:150px;" title="Cuidados Especiales de Enfermería">Cuidados Especiales</th>
+              <th style="min-width:150px;" title="Pendientes / Observaciones al Alta">Pendientes / Obs. Alta</th>
             </tr>
           </thead>
           <tbody id="tbody">
@@ -257,6 +263,7 @@
     <div class="field"><label>Pendientes / Observaciones al alta</label><textarea id="m-pend" style="min-height:52px;"></textarea></div>
 
     <div class="modal-footer">
+      <button class="btn btn-sm btn-danger" onclick="darAltaEnfermeria(editingCamaId)" style="margin-right:auto;">🏥 Dar alta</button>
       <button class="btn btn-sm" onclick="closeModal()">Cancelar</button>
       <button class="btn btn-sm btn-primary" onclick="saveModal()">Guardar</button>
     </div>
@@ -331,8 +338,10 @@ async function loadAll(){
 
 // ── TABLERO MOVIMIENTOS ──
 function renderTablero(){
-  const turnos=['M','V','N'];
-  const totales={M:{r:0,i:0,e:0},V:{r:0,i:0,e:0},N:{r:0,i:0,e:0}};
+  const turnos=['M','V','N','JD','JN'];
+  const turnoLabels={'M':'Mat','V':'Vesp','N':'Noct','JD':'J.Diurna','JN':'J.Noct'};
+  const totales={};
+  turnos.forEach(t=>{totales[t]={r:0,i:0,e:0};});
 
   const html=SERVICIOS_TABLERO.map(serv=>{
     const celdas=turnos.map(t=>{
@@ -341,68 +350,14 @@ function renderTablero(){
       totales[t].r+=d.recibo||0;
       totales[t].i+=d.ingresos||0;
       totales[t].e+=d.egresos||0;
-      return `
-        <td><input class="mov-input" type="number" min="0" value="${d.recibo||0}" id="mov_${serv}_${t}_r" onchange="calcTablero('${serv}','${t}')"/></td>
-        <td><input class="mov-input" type="number" min="0" value="${d.ingresos||0}" id="mov_${serv}_${t}_i" onchange="calcTablero('${serv}','${t}')"/></td>
-        <td><input class="mov-input" type="number" min="0" value="${d.egresos||0}" id="mov_${serv}_${t}_e" onchange="calcTablero('${serv}','${t}')"/></td>
-      `;
+      return `<td>${d.recibo||0}</td><td>${d.ingresos||0}</td><td>${d.egresos||0}</td>`;
     }).join('');
-    return `<tr>
-      <td class="serv-label">${serv}</td>
-      ${celdas}
-    </tr>`;
+    return `<tr><td class="serv-label">${serv}</td>${celdas}</tr>`;
   }).join('');
 
-  const totRow=turnos.map(t=>`
-    <td id="tot_${t}_r">${totales[t].r}</td>
-    <td id="tot_${t}_i">${totales[t].i}</td>
-    <td id="tot_${t}_e">${totales[t].e}</td>
-  `).join('');
-
+  const totRow=turnos.map(t=>`<td>${totales[t].r}</td><td>${totales[t].i}</td><td>${totales[t].e}</td>`).join('');
   document.getElementById('tablero-tbody').innerHTML=html+`
-    <tr class="total-row">
-      <td class="serv-label" style="color:var(--azul);font-weight:700;">TOTAL</td>
-      ${totRow}
-    </tr>
-  `;
-}
-
-function calcTablero(serv,turno){
-  // Recalcular totales en tiempo real
-  const r=parseInt(document.getElementById(`mov_${serv}_${turno}_r`)?.value)||0;
-  const i=parseInt(document.getElementById(`mov_${serv}_${turno}_i`)?.value)||0;
-  const e=parseInt(document.getElementById(`mov_${serv}_${turno}_e`)?.value)||0;
-  let totalR=0,totalI=0,totalE=0;
-  SERVICIOS_TABLERO.forEach(s=>{
-    totalR+=parseInt(document.getElementById(`mov_${s}_${turno}_r`)?.value)||0;
-    totalI+=parseInt(document.getElementById(`mov_${s}_${turno}_i`)?.value)||0;
-    totalE+=parseInt(document.getElementById(`mov_${s}_${turno}_e`)?.value)||0;
-  });
-  document.getElementById(`tot_${turno}_r`).textContent=totalR;
-  document.getElementById(`tot_${turno}_i`).textContent=totalI;
-  document.getElementById(`tot_${turno}_e`).textContent=totalE;
-}
-
-async function guardarTablero(){
-  const turnos=['M','V','N'];
-  const ops=[];
-  SERVICIOS_TABLERO.forEach(serv=>{
-    turnos.forEach(t=>{
-      const r=parseInt(document.getElementById(`mov_${serv}_${t}_r`)?.value)||0;
-      const i=parseInt(document.getElementById(`mov_${serv}_${t}_i`)?.value)||0;
-      const e=parseInt(document.getElementById(`mov_${serv}_${t}_e`)?.value)||0;
-      const entrego=r+i-e;
-      const existing=tableroData[`${serv}_${t}`];
-      if(existing){
-        ops.push(db.from('movimientos_turno').update({recibo:r,ingresos:i,egresos:e,entrego}).eq('id',existing.id));
-      } else {
-        ops.push(db.from('movimientos_turno').insert({fecha:currentFecha,turno:t,servicio:serv,recibo:r,ingresos:i,egresos:e,entrego}));
-      }
-    });
-  });
-  await Promise.all(ops);
-  showToast('Tablero guardado','success');
-  await loadAll();
+    <tr class="total-row"><td class="serv-label" style="color:var(--azul);font-weight:700;">TOTAL</td>${totRow}</tr>`;
 }
 
 // ── CENSO ENFERMERÍA ──
@@ -488,8 +443,19 @@ function renderCenso(){
     <tr data-id="${r.id}" data-cama="${r.numero_cama}"
       style="border-bottom:1px solid var(--gris-borde);">
       <td colspan="${totalCols-1}"
-        style="background:#F8F7F4;padding:3px 10px 5px 10px;font-size:10px;color:var(--texto-2);line-height:1.4;white-space:normal;word-break:break-word;">
-        <span style="font-weight:600;color:var(--texto-3);font-size:9px;text-transform:uppercase;letter-spacing:.04em;margin-right:6px;">Dx:</span>${r.diagnostico||'—'}
+        style="background:#F8F7F4;padding:4px 10px 6px 10px;font-size:10px;line-height:1.5;white-space:normal;word-break:break-word;">
+        <span style="display:inline-flex;flex-wrap:wrap;gap:12px;align-items:baseline;">
+          <span><b style="color:var(--texto-3);font-size:9px;text-transform:uppercase;letter-spacing:.04em;">Paciente:</b> <b style="color:var(--texto);">${r.nombre_paciente||''}</b></span>
+          <span><b style="color:var(--texto-3);font-size:9px;">Cédula:</b> <span style="font-family:'IBM Plex Mono',monospace;">${r.cedula||'—'}</span></span>
+          <span><b style="color:var(--texto-3);font-size:9px;">Tipo DH:</b> ${r.tipo_dh||'—'}</span>
+          <span><b style="color:var(--texto-3);font-size:9px;">Sexo:</b> ${r.sexo||'—'}</span>
+          <span><b style="color:var(--texto-3);font-size:9px;">Edad:</b> ${r.edad||'—'} años</span>
+          <span><b style="color:var(--texto-3);font-size:9px;">Ingreso:</b> ${r.fecha_ingreso?new Date(r.fecha_ingreso+'T00:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—'}</span>
+          <span><b style="color:var(--texto-3);font-size:9px;">DEH:</b> <span style="font-weight:700;color:${calcDEH(r.fecha_ingreso)>10?'var(--rojo)':'var(--texto)'};">${calcDEH(r.fecha_ingreso)??'—'}</span></span>
+        </span>
+        <div style="margin-top:3px;color:var(--texto-2);">
+          <b style="color:var(--texto-3);font-size:9px;text-transform:uppercase;letter-spacing:.04em;">Dx:</b> ${r.diagnostico||'—'}
+        </div>
       </td>
     </tr>`;
   }).join('');
@@ -657,56 +623,209 @@ async function saveModal(){
   renderCenso();
 }
 
-// ── HACER CORTE ──
-function hacerCorte(){
-  const turnoLabel={'M':'Matutino','V':'Vespertino','N':'Nocturno'}[currentTurno]||currentTurno;
+// ── DEH ──
+function calcDEH(fi){
+  if(!fi)return null;
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const ing=new Date(fi+'T00:00:00');
+  const d=Math.floor((hoy-ing)/86400000);
+  return d>=0?d:0;
+}
+function todayISO(){return new Date().toISOString().split('T')[0];}
+
+// ── ALTA / EGRESO desde enfermería ──
+async function darAltaEnfermeria(camaId){
+  const cama=allRows.find(r=>r.id===camaId);
+  if(!cama||!cama.nombre_paciente)return;
+  const motivo=prompt(`Alta del paciente: ${cama.nombre_paciente}\n\nEscribe el motivo:\n1. Mejoría\n2. Defunción\n3. Traslado a otra unidad`);
+  if(!motivo)return;
+  const motivoMap={'1':'Mejoría','2':'Defunción','3':'Traslado a otra unidad'};
+  const motivoFinal=motivoMap[motivo.trim()]||motivo.trim();
+  const fecha=todayISO();
+
+  // Guardar en egresos_hospital
+  const egreso={
+    numero_cama:cama.numero_cama, nombre_paciente:cama.nombre_paciente,
+    sexo:cama.sexo, servicio:cama.servicio, manejo_conjunto:cama.manejo_conjunto,
+    cedula:cama.cedula, tipo_dh:cama.tipo_dh, gpo_rh:cama.gpo_rh,
+    edad:cama.edad, fecha_ingreso:cama.fecha_ingreso, diagnostico:cama.diagnostico,
+    motivo_alta:motivoFinal, fecha_alta:fecha,
+  };
+  await db.from('egresos_hospital').insert(egreso);
+
+  // Limpiar cama
+  const limpio={nombre_paciente:null,sexo:null,servicio:null,manejo_conjunto:null,cedula:null,tipo_dh:null,gpo_rh:null,edad:null,fecha_ingreso:null,diagnostico:null,pendientes:null,prealerta:false,ventilador:false,aislado:false,cirugia_pendiente:false,vpo_pendiente:false,material_qx:false,caso_riesgo:false};
+  await db.from('camas_hospitalizacion').update(limpio).eq('id',camaId);
+
+  showToast(`Alta registrada: ${motivoFinal}`,'success');
+  closeModal();
+  await loadAll();
+}
+
+// ── MODAL DE CORTE ──
+function openCorteModal(){
+  document.getElementById('corte-overlay').classList.add('open');
+  // Pre-seleccionar turno actual
+  document.getElementById('corte-turno').value=currentTurno;
+}
+function closeCorteModal(){document.getElementById('corte-overlay').classList.remove('open');}
+
+async function ejecutarCorte(){
+  const turnoEntrega=document.getElementById('corte-turno').value;
+  if(!turnoEntrega){showToast('Selecciona el turno que se entrega','error');return;}
   const fecha=document.getElementById('fecha-censo').value||currentFecha;
+  const turnoLabel={'M':'Matutino','V':'Vespertino','N':'Nocturno','JD':'Jornada Diurna','JN':'Jornada Nocturna'};
+
+  // Snapshot actual de camas
+  const snapshotActual=allRows.map(r=>({
+    id:r.id, numero_cama:r.numero_cama, nombre_paciente:r.nombre_paciente,
+    servicio:r.servicio, manejo_conjunto:r.manejo_conjunto,
+    cedula:r.cedula, tipo_dh:r.tipo_dh, edad:r.edad,
+    fecha_ingreso:r.fecha_ingreso, diagnostico:r.diagnostico, sexo:r.sexo
+  }));
+
+  // Buscar corte anterior del mismo tipo
+  const{data:corteAnterior}=await db.from('cortes_enfermeria')
+    .select('*').eq('tipo','hospital')
+    .order('created_at',{ascending:false}).limit(1).maybeSingle();
+
+  // Calcular movimientos comparando snapshots
+  const serviciosHosp=['MI','Cx','TyO','GyO','Pedia','UCI'];
+  const movimientos={};
+  serviciosHosp.forEach(sv=>{movimientos[sv]={recibo:0,ingresos:0,egresos:0};});
+
+  if(corteAnterior?.snapshot){
+    const snapAnterior=corteAnterior.snapshot;
+    const camasAnterior=new Map(snapAnterior.map(c=>[c.id,c]));
+
+    allRows.forEach(r=>{
+      const sv=r.servicio||r.manejo_conjunto||'otro';
+      const svKey=serviciosHosp.includes(sv)?sv:(sv.startsWith('UCI')?'UCI':'MI');
+      const anterior=camasAnterior.get(r.id);
+
+      if(!movimientos[svKey]) return;
+
+      // Recibo = pacientes que estaban en la cama anterior
+      if(anterior?.nombre_paciente && r.nombre_paciente && anterior.nombre_paciente===r.nombre_paciente){
+        movimientos[svKey].recibo++;
+      }
+      // Ingresos = camas que ahora tienen paciente pero antes no (o paciente diferente)
+      if(r.nombre_paciente && (!anterior?.nombre_paciente || anterior.nombre_paciente!==r.nombre_paciente)){
+        movimientos[svKey].ingresos++;
+      }
+    });
+
+    // Egresos = pacientes que estaban antes y ya no están
+    snapAnterior.forEach(ant=>{
+      if(!ant.nombre_paciente)return;
+      const actual=allRows.find(r=>r.id===ant.id);
+      if(!actual?.nombre_paciente || actual.nombre_paciente!==ant.nombre_paciente){
+        const sv=ant.servicio||ant.manejo_conjunto||'MI';
+        const svKey=serviciosHosp.includes(sv)?sv:'MI';
+        if(movimientos[svKey]) movimientos[svKey].egresos++;
+      }
+    });
+  } else {
+    // Primer corte: recibo = todos los pacientes actuales
+    allRows.filter(r=>r.nombre_paciente).forEach(r=>{
+      const sv=r.servicio||r.manejo_conjunto||'MI';
+      const svKey=serviciosHosp.includes(sv)?sv:'MI';
+      if(movimientos[svKey]) movimientos[svKey].recibo++;
+    });
+  }
+
+  // Guardar snapshot en Supabase
+  await db.from('cortes_enfermeria').insert({
+    tipo:'hospital', turno:turnoEntrega, fecha_corte:fecha,
+    hora_corte:new Date().toTimeString().split(' ')[0],
+    realizado_nombre:currentUser?.nombre||'',
+    snapshot:snapshotActual, movimientos
+  });
+
+  // Actualizar tablero en movimientos_turno
+  const ops=[];
+  serviciosHosp.forEach(sv=>{
+    const mov=movimientos[sv]||{recibo:0,ingresos:0,egresos:0};
+    const existing=tableroData[`${sv}_${turnoEntrega}`];
+    const payload={fecha,turno:turnoEntrega,servicio:sv,recibo:mov.recibo,ingresos:mov.ingresos,egresos:mov.egresos,entrego:mov.recibo+mov.ingresos-mov.egresos};
+    if(existing) ops.push(db.from('movimientos_turno').update(payload).eq('id',existing.id));
+    else ops.push(db.from('movimientos_turno').insert(payload));
+  });
+  await Promise.all(ops);
+  await loadAll();
+
+  closeCorteModal();
+  // Generar reporte imprimible
+  generarReporteCorte(turnoEntrega, turnoLabel[turnoEntrega]||turnoEntrega, fecha, movimientos, snapshotActual);
+}
+
+function generarReporteCorte(turno, turnoLabel, fecha, movimientos, snapshot){
   const ocupadas=allRows.filter(r=>r.nombre_paciente);
   const disponibles=allRows.filter(r=>!r.nombre_paciente);
+  const serviciosHosp=['MI','Cx','TyO','GyO','Pedia','UCI'];
 
-  const filas=ocupadas.map(r=>{
-    const e=enfData[r.id]||{};
-    const sp=r.servicio||'';
+  const movRows=serviciosHosp.map(sv=>{
+    const m=movimientos[sv]||{recibo:0,ingresos:0,egresos:0};
     return `<tr>
-      <td style="font-weight:700;white-space:nowrap;">${r.numero_cama}</td>
-      <td style="font-size:10px;">${sp}</td>
-      <td style="font-weight:600;">${r.nombre_paciente||''}</td>
-      <td style="font-size:10px;">${r.cedula||''}</td>
-      <td style="text-align:center;">${r.edad||''}</td>
-      <td style="text-align:center;">${r.sexo||''}</td>
-      <td style="font-size:10px;color:#555;">${r.diagnostico||''}</td>
-      <td style="font-size:10px;">${e.infusiones||''}</td>
-      <td style="font-size:10px;">${e.antibioticos||''}</td>
-      <td style="font-size:10px;">${e.cuidados_especiales||''}</td>
-      <td style="font-size:10px;">${e.pendientes||''}</td>
+      <td style="font-weight:600;">${sv}</td>
+      <td style="text-align:center;">${m.recibo}</td>
+      <td style="text-align:center;">${m.ingresos}</td>
+      <td style="text-align:center;">${m.egresos}</td>
+      <td style="text-align:center;font-weight:700;">${m.recibo+m.ingresos-m.egresos}</td>
     </tr>`;
   }).join('');
 
-  const win=window.open('','_blank','width=1100,height=800');
+  const pacRows=ocupadas.map(r=>{
+    const e=enfData[r.id]||{};
+    const deh=calcDEH(r.fecha_ingreso);
+    return `<tr>
+      <td style="font-weight:700;white-space:nowrap;">${r.numero_cama}</td>
+      <td style="font-size:10px;">${r.servicio||''}</td>
+      <td style="font-weight:600;">${r.nombre_paciente||''}</td>
+      <td style="font-size:10px;">${r.cedula||''}</td>
+      <td style="text-align:center;">${r.tipo_dh||''}</td>
+      <td style="text-align:center;">${r.edad||''}</td>
+      <td style="text-align:center;">${r.sexo||''}</td>
+      <td style="text-align:center;font-weight:${deh>10?'700':'400'};color:${deh>10?'#A32D2D':'#111'};">${deh??''}</td>
+      <td style="font-size:9px;color:#555;">${r.diagnostico||''}</td>
+      <td style="font-size:9px;">${e.infusiones||''}</td>
+      <td style="font-size:9px;">${e.antibioticos||''}</td>
+      <td style="font-size:9px;">${e.cuidados_especiales||''}</td>
+      <td style="font-size:9px;">${e.pendientes||''}</td>
+    </tr>`;
+  }).join('');
+
+  const win=window.open('','_blank','width=1200,height=900');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
-  <title>Corte de Enfermería — Hospital</title>
+  <title>Corte — ${turnoLabel} ${fecha}</title>
   <style>
-    body{font-family:Arial,sans-serif;font-size:11px;margin:16px;color:#111;}
-    h2{font-size:14px;margin:0 0 2px;} h3{font-size:12px;margin:0 0 10px;color:#555;}
-    .encab{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;border-bottom:2px solid #185FA5;padding-bottom:8px;}
-    .stats{display:flex;gap:24px;margin-bottom:12px;}
-    .stat{background:#F1EFE8;padding:6px 14px;border-radius:6px;text-align:center;}
-    .stat .n{font-size:22px;font-weight:700;color:#185FA5;} .stat .l{font-size:10px;color:#555;}
-    table{width:100%;border-collapse:collapse;font-size:10px;}
-    th{background:#185FA5;color:#fff;padding:5px 6px;text-align:left;font-size:9px;}
-    td{padding:4px 6px;border-bottom:1px solid #E5E5E0;vertical-align:top;}
+    body{font-family:Arial,sans-serif;font-size:10px;margin:14px;color:#111;}
+    h2{font-size:13px;margin:0 0 2px;}h3{font-size:11px;margin:0 0 8px;color:#555;}
+    .encab{display:flex;justify-content:space-between;margin-bottom:10px;border-bottom:2px solid #185FA5;padding-bottom:6px;}
+    .stats{display:flex;gap:16px;margin-bottom:10px;}
+    .stat{background:#F1EFE8;padding:4px 12px;border-radius:4px;text-align:center;}
+    .stat .n{font-size:18px;font-weight:700;color:#185FA5;}.stat .l{font-size:9px;color:#555;}
+    .section{margin-bottom:12px;}
+    .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#185FA5;margin-bottom:4px;padding-bottom:2px;border-bottom:1px solid #185FA5;}
+    table{width:100%;border-collapse:collapse;font-size:9px;}
+    th{background:#185FA5;color:#fff;padding:4px 5px;text-align:left;}
+    th.center{text-align:center;}
+    td{padding:3px 5px;border-bottom:1px solid #E5E5E0;vertical-align:top;}
     tr:nth-child(even) td{background:#F8F7F4;}
-    @media print{body{margin:8px;}}
+    .firmas{margin-top:24px;display:flex;gap:60px;}
+    .firma{text-align:center;flex:1;border-top:1px solid #000;padding-top:3px;font-size:9px;}
+    @media print{body{margin:6px;}}
   </style></head><body>
   <div class="encab">
     <div>
       <h2>Clínica Hospital Dr. Miguel Trejo Ochoa</h2>
       <h3>Corte de Enfermería — Hospitalización</h3>
     </div>
-    <div style="text-align:right;font-size:11px;">
+    <div style="text-align:right;font-size:10px;">
+      <div><b>Turno entregado:</b> ${turnoLabel}</div>
       <div><b>Fecha:</b> ${fecha}</div>
-      <div><b>Turno:</b> ${turnoLabel}</div>
-      <div><b>Generado:</b> ${new Date().toLocaleTimeString('es-MX')}</div>
+      <div><b>Hora:</b> ${new Date().toLocaleTimeString('es-MX')}</div>
+      <div><b>Elaboró:</b> ${currentUser?.nombre||''}</div>
     </div>
   </div>
   <div class="stats">
@@ -714,30 +833,76 @@ function hacerCorte(){
     <div class="stat"><div class="n" style="color:#854F0B;">${ocupadas.length}</div><div class="l">Ocupadas</div></div>
     <div class="stat"><div class="n" style="color:#3B6D11;">${disponibles.length}</div><div class="l">Disponibles</div></div>
   </div>
-  <table>
-    <thead><tr>
-      <th>Cama</th><th>Serv.</th><th>Nombre</th><th>Cédula</th>
-      <th>Edad</th><th>S</th><th>Diagnóstico</th>
-      <th>VVP/Infusiones</th><th>Antibióticos</th>
-      <th>Cuidados Especiales</th><th>Pendientes</th>
-    </tr></thead>
-    <tbody>${filas}</tbody>
-  </table>
-  <div style="margin-top:30px;display:flex;gap:60px;">
-    <div style="text-align:center;flex:1;">
-      <div style="border-top:1px solid #000;padding-top:4px;font-size:10px;">Firma Jefa de Enfermería</div>
-    </div>
-    <div style="text-align:center;flex:1;">
-      <div style="border-top:1px solid #000;padding-top:4px;font-size:10px;">Firma Enfermera Responsable</div>
-    </div>
+
+  <div class="section">
+    <div class="section-title">Movimientos del turno por servicio</div>
+    <table>
+      <thead><tr>
+        <th>Servicio</th>
+        <th class="center">Recibo</th>
+        <th class="center">Ingresos</th>
+        <th class="center">Egresos</th>
+        <th class="center">Entrego</th>
+      </tr></thead>
+      <tbody>${movRows}</tbody>
+    </table>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Censo de pacientes al momento del corte</div>
+    <table>
+      <thead><tr>
+        <th>Cama</th><th>Serv.</th><th>Nombre</th><th>Cédula</th>
+        <th class="center">Tipo DH</th><th class="center">Edad</th><th class="center">S</th>
+        <th class="center">DEH</th><th>Diagnóstico</th>
+        <th>VVP/Inf.</th><th>Antibióticos</th>
+        <th>Cuidados Esp.</th><th>Pendientes</th>
+      </tr></thead>
+      <tbody>${pacRows}</tbody>
+    </table>
+  </div>
+
+  <div class="firmas">
+    <div class="firma">Firma Jefa de Enfermería que entrega</div>
+    <div class="firma">Firma Jefa de Enfermería que recibe</div>
   </div>
   <script>window.onload=()=>window.print();<\/script>
   </body></html>`);
   win.document.close();
 }
 
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+// ── HACER CORTE (legacy - now calls openCorteModal) ──
+function hacerCorte(){ openCorteModal(); }
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeCorteModal();}});
 document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
+document.getElementById('corte-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('corte-overlay'))closeCorteModal();});
 </script>
+
+<!-- MODAL CORTE -->
+<div class="modal-overlay" id="corte-overlay">
+  <div class="modal" style="max-width:380px;">
+    <div class="modal-title">📄 Hacer corte de turno</div>
+    <div style="font-size:12px;color:var(--texto-2);margin-bottom:14px;">Selecciona el turno que se <b>entrega</b>:</div>
+    <div class="field">
+      <label>Turno que se entrega</label>
+      <select id="corte-turno" style="width:100%;padding:8px 10px;border:1px solid var(--gris-borde);border-radius:var(--radio);font-size:13px;">
+        <option value="M">Matutino</option>
+        <option value="V">Vespertino</option>
+        <option value="N">Nocturno</option>
+        <option value="JD">Jornada Diurna</option>
+        <option value="JN">Jornada Nocturna</option>
+      </select>
+    </div>
+    <div style="background:var(--azul-lt);border-radius:var(--radio);padding:10px 12px;font-size:12px;color:var(--azul-dk);margin-bottom:14px;">
+      ℹ️ El sistema calculará automáticamente los movimientos (Recibo, Ingresos, Egresos) comparando con el corte anterior y generará el reporte imprimible.
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeCorteModal()">Cancelar</button>
+      <button class="btn btn-sm btn-primary" onclick="ejecutarCorte()">Generar corte e imprimir</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
