@@ -159,13 +159,12 @@
           <!-- Encabezados agrupados -->
           <thead>
             <tr>
-              <th class="col-cama" rowspan="2" style="min-width:50px;">Cama</th>
+              <th class="col-cama" rowspan="2" style="min-width:56px;">Cama</th>
               <th rowspan="2" style="min-width:30px;">Serv.</th>
-              <th rowspan="2" style="min-width:140px;">Nombre</th>
-              <th rowspan="2" style="min-width:76px;">Cédula</th>
+              <th rowspan="2" style="min-width:160px;">Nombre del paciente<br/><span style="font-weight:400;color:var(--texto-3);font-size:9px;">↳ Diagnóstico debajo</span></th>
+              <th rowspan="2" style="min-width:72px;">Cédula</th>
               <th rowspan="2" style="min-width:28px;">Edad</th>
               <th rowspan="2" style="min-width:18px;">S</th>
-              <th rowspan="2" style="min-width:160px;">Diagnóstico</th>
               <th colspan="7" class="th-group-label">Cuatro Paquetes / Procedimientos</th>
               <th colspan="3" class="th-group-label">Respiratorio</th>
               <th colspan="4" class="th-group-label">DPCA / Líquidos</th>
@@ -174,34 +173,34 @@
               <th rowspan="2" style="min-width:44px;">Acción</th>
             </tr>
             <tr>
-              <!-- Cuatro paquetes -->
-              <th title="Estudios de Laboratorio" style="min-width:22px;">Lab</th>
-              <th title="Estudios de Imagen" style="min-width:22px;">Img</th>
-              <th title="Hemo-cultivo" style="min-width:22px;">HCu</th>
-              <th title="Radiografía" style="min-width:22px;">RX</th>
-              <th title="Curaciones" style="min-width:22px;">Cur</th>
-              <th title="Catéter Venoso Central" style="min-width:22px;">CVC</th>
-              <th title="Infusiones / VVP" style="min-width:90px;">VVP / Infusiones</th>
+              <!-- Cuatro paquetes — todos texto libre -->
+              <th style="min-width:80px;">Lab</th>
+              <th style="min-width:80px;">Imagen</th>
+              <th style="min-width:80px;">HemoCultivo</th>
+              <th style="min-width:60px;">RX</th>
+              <th style="min-width:80px;">Curaciones</th>
+              <th style="min-width:80px;">CVC</th>
+              <th style="min-width:120px;">VVP / Infusiones</th>
               <!-- Respiratorio -->
-              <th title="Ventilador Mecánico" style="min-width:22px;">VM</th>
-              <th title="CPAP" style="min-width:22px;">CPAP</th>
-              <th title="Oxígeno" style="min-width:50px;">O₂</th>
+              <th style="min-width:80px;">Ventilador</th>
+              <th style="min-width:80px;">CPAP</th>
+              <th style="min-width:80px;">O₂</th>
               <!-- DPCA -->
-              <th title="Soluciones parenterales" style="min-width:80px;">Sol. Paren.</th>
-              <th title="Glucosa" style="min-width:50px;">Glucosa</th>
-              <th title="Diuresis" style="min-width:50px;">Diuresis</th>
-              <th title="Lactancia" style="min-width:22px;">Lact</th>
+              <th style="min-width:100px;">Sol. Parenterales</th>
+              <th style="min-width:80px;">Glucosa</th>
+              <th style="min-width:80px;">Diuresis</th>
+              <th style="min-width:80px;">Lactancia</th>
               <!-- Medicamentos -->
-              <th style="min-width:110px;">Antibióticos</th>
+              <th style="min-width:130px;">Antibióticos</th>
               <!-- Evaluación -->
-              <th style="min-width:70px;">Interconsulta</th>
-              <th title="Baño general" style="min-width:22px;">Baño</th>
-              <th style="min-width:120px;">Cuidados Especiales</th>
-              <th style="min-width:120px;">Pendientes / Obs. Alta</th>
+              <th style="min-width:90px;">Interconsulta</th>
+              <th style="min-width:60px;">Baño Gral.</th>
+              <th style="min-width:150px;">Cuidados Especiales</th>
+              <th style="min-width:150px;">Pendientes / Obs. Alta</th>
             </tr>
           </thead>
           <tbody id="tbody">
-            <tr><td colspan="27"><div class="loading"><div class="spinner"></div> Cargando…</div></td></tr>
+            <tr><td colspan="26"><div class="loading"><div class="spinner"></div> Cargando…</div></td></tr>
           </tbody>
         </table>
       </div>
@@ -431,10 +430,16 @@ function renderCenso(){
         ondragover="onDragOverEnf(event)" ondrop="onDropEnf(event)" ondragleave="this.classList.remove('drag-over-enf')"
         style="opacity:.5;">
         <td class="col-cama"><span class="cama-lbl">${r.numero_cama}</span></td>
-        <td colspan="26"><span class="empty-cell">— disponible —</span></td>
+        <td colspan="24"><span class="empty-cell">— disponible —</span></td>
         <td></td>
       </tr>`;
     }
+
+    // Celda nombre + diagnóstico debajo
+    const nombreDx=`
+      <div style="font-size:11px;font-weight:600;color:var(--texto);">${r.nombre_paciente||''}</div>
+      <div style="font-size:9px;color:var(--texto-2);margin-top:3px;line-height:1.3;">${r.diagnostico||''}</div>
+    `;
 
     return `<tr data-id="${r.id}" data-cama="${r.numero_cama}" draggable="true"
       ondragstart="onDragStartEnf(event)"
@@ -442,46 +447,41 @@ function renderCenso(){
       ondrop="onDropEnf(event)"
       ondragleave="this.classList.remove('drag-over-enf')"
       ondblclick="openModal('${r.id}')">
-      <!-- Handle + Cama fija -->
-      <td class="col-cama" style="white-space:nowrap;">
-        <span class="drag-handle-enf" title="Arrastrar para mover de cama">⠿</span>
+      <!-- Cama fija -->
+      <td class="col-cama" style="white-space:nowrap;vertical-align:top;padding-top:8px;">
+        <span class="drag-handle-enf" title="Arrastrar">⠿</span>
         <span class="cama-lbl">${r.numero_cama}</span>
       </td>
-      <td>${sp}</td>
-      <td style="font-size:10px;font-weight:500;" title="${r.nombre_paciente}">${trunc(r.nombre_paciente,20)}</td>
-      <td style="font-size:9px;font-family:'IBM Plex Mono',monospace;">${r.cedula||''}</td>
-      <td style="text-align:center;">${r.edad||''}</td>
-      <td style="text-align:center;">${r.sexo||''}</td>
-      <td class="col-dx editable">${taCell(r.diagnostico,'Diagnóstico…',r.id,'_dx_local')}</td>
-      <!-- Cuatro paquetes (iconos clicables) -->
-      <td style="text-align:center;">${icoChk(e.estudios_lab,'🧪','estudios_lab',r.id)}</td>
-      <td style="text-align:center;">${icoChk(e.estudios_imagen,'🖼','estudios_imagen',r.id)}</td>
-      <td style="text-align:center;">${icoChk(e.hem_cu,'🩸','hem_cu',r.id)}</td>
-      <td style="text-align:center;">${icoChk(e.rx,'☢️','rx',r.id)}</td>
-      <td style="text-align:center;">${icoChk(e.curaciones,'🩹','curaciones',r.id)}</td>
-      <td style="text-align:center;">${icoChk(e.cvc,'💉','cvc',r.id)}</td>
-      <!-- VVP/Infusiones — texto libre -->
+      <td style="vertical-align:top;">${sp}</td>
+      <td style="vertical-align:top;">${nombreDx}</td>
+      <td style="font-size:9px;font-family:'IBM Plex Mono',monospace;vertical-align:top;">${r.cedula||''}</td>
+      <td style="text-align:center;vertical-align:top;">${r.edad||''}</td>
+      <td style="text-align:center;vertical-align:top;">${r.sexo||''}</td>
+      <!-- Cuatro paquetes — TODOS texto libre -->
+      <td class="editable">${taCell(e.estudios_lab,'Ej: BH, QS, EGO…',r.id,'estudios_lab')}</td>
+      <td class="editable">${taCell(e.estudios_imagen,'Ej: Rx Tórax, USG…',r.id,'estudios_imagen')}</td>
+      <td class="editable">${taCell(e.hem_cu,'Ej: 2 hemocultivos…',r.id,'hem_cu')}</td>
+      <td class="editable">${taCell(e.rx,'Ej: Rx PA y Lat…',r.id,'rx')}</td>
+      <td class="editable">${taCell(e.curaciones,'Ej: Curación c/24h…',r.id,'curaciones')}</td>
+      <td class="editable">${taCell(e.cvc,'Ej: CVC subclavio Dcho…',r.id,'cvc')}</td>
       <td class="col-vvp editable">${taCell(e.infusiones,'CVP#18 30-04 TM…',r.id,'infusiones')}</td>
-      <!-- Respiratorio iconos + texto -->
-      <td style="text-align:center;">${icoChk(e.ventilador_mecanico,'🌬','ventilador_mecanico',r.id)}</td>
-      <td style="text-align:center;">${icoChk(e.cpap,'😷','cpap',r.id)}</td>
-      <td class="editable"><textarea class="input-cell" rows="1" placeholder="3L PRN"
-        onchange="updateField('${r.id}','oxigeno_litros',this.value)"
-        oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
-        >${e.oxigeno_litros||''}</textarea></td>
+      <!-- Respiratorio — texto libre -->
+      <td class="editable">${taCell(e.ventilador_mecanico,'Ej: VM SIMV 14x500…',r.id,'ventilador_mecanico')}</td>
+      <td class="editable">${taCell(e.cpap,'Ej: CPAP 8 cmH2O…',r.id,'cpap')}</td>
+      <td class="editable">${taCell(e.oxigeno_litros,'Ej: 3L/min PRN…',r.id,'oxigeno_litros')}</td>
       <!-- DPCA / Líquidos -->
-      <td class="col-sol editable">${taCell(e.soluciones_parenterales,'SS 500 P/24',r.id,'soluciones_parenterales')}</td>
-      <td class="editable">${taCell(e.glucosa,'PRN',r.id,'glucosa')}</td>
-      <td class="editable">${taCell(e.diuresis,'1500ml/24h',r.id,'diuresis')}</td>
-      <td style="text-align:center;">${icoChk(e.lactancia,'🤱','lactancia',r.id)}</td>
+      <td class="col-sol editable">${taCell(e.soluciones_parenterales,'SS 500 P/24…',r.id,'soluciones_parenterales')}</td>
+      <td class="editable">${taCell(e.glucosa,'PRN c/6h…',r.id,'glucosa')}</td>
+      <td class="editable">${taCell(e.diuresis,'1500ml/24h…',r.id,'diuresis')}</td>
+      <td class="editable">${taCell(e.lactancia,'Ej: LM exclusiva…',r.id,'lactancia')}</td>
       <!-- Antibióticos -->
       <td class="col-abx editable">${taCell(e.antibioticos,'Pip+Tazo 4.5g c/8h…',r.id,'antibioticos')}</td>
-      <!-- Evaluación / Notas -->
+      <!-- Evaluación -->
       <td class="col-ic editable">${taCell(e.inter_consulta,'Cardiología…',r.id,'inter_consulta')}</td>
-      <td style="text-align:center;">${icoChk(e.bano_general,'🚿','bano_general',r.id)}</td>
+      <td class="editable">${taCell(e.bano_general,'Ej: Baño en cama…',r.id,'bano_general')}</td>
       <td class="col-ce editable">${taCell(e.cuidados_especiales,'SVPT, CGE, C/D…',r.id,'cuidados_especiales')}</td>
       <td class="col-pend editable">${taCell(e.pendientes,'Pendientes / Obs alta…',r.id,'pendientes')}</td>
-      <td>
+      <td style="vertical-align:top;">
         <button class="save-row-btn" onclick="saveRow('${r.id}');event.stopPropagation();">💾</button>
       </td>
     </tr>`;
