@@ -334,6 +334,7 @@
         </div>
       </div>
       <div class="modal-footer">
+        <button class="btn btn-sm btn-danger" id="btn-eliminar-paciente" onclick="eliminarPaciente()" style="display:none;margin-right:auto;">🗑️ Eliminar</button>
         <button class="btn btn-sm" onclick="closeModal()">Cancelar</button>
         <button class="btn btn-sm btn-primary" onclick="saveModal()">Guardar</button>
       </div>
@@ -380,10 +381,19 @@ const ROLES_SOLO_ADMISION=['ventanilla_admision'];
     if(!currentUser)return;
     renderHeader(currentUser);
 
-    // Ventanilla de admisión: ocultar sidebar excepto admisión
+    // Ventanilla de admisión: mostrar SOLO admisión en sidebar
     if(currentUser.rol==='ventanilla_admision'){
-      document.querySelectorAll('.sidebar-item:not([href="admision_urgencias.html"])').forEach(el=>el.style.display='none');
-      document.querySelectorAll('.sidebar-section').forEach(el=>el.style.display='none');
+      // Ocultar sidebar completo y mostrar solo el link de admisión
+      const sidebar=document.getElementById('sidebar');
+      if(sidebar){
+        sidebar.querySelectorAll('.sidebar-section, .sidebar-item').forEach(el=>{
+          el.style.display='none';
+        });
+        const admisionLink=sidebar.querySelector('[href="admision_urgencias.html"]');
+        if(admisionLink){
+          admisionLink.style.display='flex';
+        }
+      }
     }
 
     const canEdit=ROLES_ADMISION.includes(currentUser.rol);
@@ -403,11 +413,19 @@ const ROLES_SOLO_ADMISION=['ventanilla_admision'];
 })();
 
 async function loadMedicos(){
-  const{data,error}=await db.from('medicos').select('*').eq('activo',true).order('consultorio');
-  if(error)return;
-  medicosData=data||[];
-  renderMedicosPanel();
-  fillConsSelect();
+  try{
+    const{data,error}=await db.from('medicos').select('*').eq('activo',true).order('consultorio');
+    if(error){
+      document.getElementById('medicos-grid').innerHTML='<div style="font-size:12px;color:var(--texto-3);">Error al cargar médicos</div>';
+      return;
+    }
+    medicosData=data||[];
+    renderMedicosPanel();
+    fillConsSelect();
+  }catch(err){
+    console.error('loadMedicos error:',err);
+    document.getElementById('medicos-grid').innerHTML='<div style="font-size:12px;color:var(--texto-3);">Sin conexión</div>';
+  }
 }
 
 function renderMedicosPanel(){
@@ -510,12 +528,21 @@ function fillMedico(){
 }
 
 async function loadAdmision(){
-  const{data,error}=await db.from('admision_urgencias').select('*').order('numero',{ascending:true});
-  if(error){showToast('Error: '+error.message,'error');return;}
-  allRows=data||[];
-  applyFilters();
-  updateReporte();
-  renderMedicosPanel();
+  try{
+    const{data,error}=await db.from('admision_urgencias').select('*').order('numero',{ascending:true});
+    if(error){
+      showToast('Error al cargar: '+error.message,'error');
+      document.getElementById('tbody').innerHTML='<tr><td colspan="14" style="text-align:center;padding:2rem;color:#c00">Error al cargar datos. Recarga la página.</td></tr>';
+      return;
+    }
+    allRows=data||[];
+    applyFilters();
+    updateReporte();
+    renderMedicosPanel();
+  }catch(err){
+    console.error('loadAdmision error:',err);
+    document.getElementById('tbody').innerHTML='<tr><td colspan="14" style="text-align:center;padding:2rem;color:#c00">Error de conexión.</td></tr>';
+  }
 }
 
 function updateReporte(){
@@ -627,13 +654,12 @@ function cancelEstado(id, estadoOriginal){
   if(cell) cell.innerHTML=estadoPill(estadoOriginal);
 }
 
-// ── MODAL NUEVO ──
 function openModalNuevo(){
   editingId=null;
   document.getElementById('modal-title').textContent='Registrar paciente';
   document.getElementById('modal-form').style.display='block';
+  document.getElementById('btn-eliminar-paciente').style.display='none';
   clearForm();
-  // Auto hora actual
   const now=new Date();
   document.getElementById('m-hora').value=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}`;
   document.getElementById('modal-overlay').classList.add('open');
@@ -643,9 +669,10 @@ function openModalEditar(id){
   const r=allRows.find(x=>x.id===id);
   if(!r)return;
   editingId=id;
-  document.getElementById('modal-title').textContent=`Editar — ${r.nombre_paciente}`;
+  document.getElementById('modal-title').textContent=`Editar — ${r.nombre_paciente||''}`;
   document.getElementById('modal-opciones').style.display='none';
   document.getElementById('modal-form').style.display='block';
+  document.getElementById('btn-eliminar-paciente').style.display='inline-flex';
   document.getElementById('m-nombre').value=r.nombre_paciente||'';
   document.getElementById('m-rfc').value=r.rfc_cedula||'';
   document.getElementById('m-tipo').value=r.tipo_dh||'';
@@ -659,6 +686,18 @@ function openModalEditar(id){
   document.getElementById('m-area').value=r.area||'Urgencias';
   document.getElementById('m-estado').value=r.estado||'Sala de espera';
   document.getElementById('modal-overlay').classList.add('open');
+}
+
+async function eliminarPaciente(){
+  if(!editingId)return;
+  const r=allRows.find(x=>x.id===editingId);
+  const nombre=r?.nombre_paciente||'este paciente';
+  if(!confirm(`¿Seguro que deseas eliminar el registro de ${nombre}?`))return;
+  const{error}=await db.from('admision_urgencias').delete().eq('id',editingId);
+  if(error){showToast('Error al eliminar: '+error.message,'error');return;}
+  showToast('Paciente eliminado','success');
+  closeModal();
+  await loadAdmision();
 }
 
 function showNuevo(){ /* no-op, form already shown */ }
