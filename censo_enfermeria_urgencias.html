@@ -67,22 +67,20 @@
     }
     .tbl-wrap table { table-layout: auto !important; }
     .tbl-wrap { max-height: 72vh; overflow-y: auto; overflow-x: auto; }
-    /* Sticky thead — fondo sólido garantizado, sin huecos transparentes */
+    /* Sticky thead — sólido, sin huecos */
+    .tbl-wrap table { table-layout: auto !important; }
+    .tbl-wrap { max-height: 72vh; overflow-y: auto; overflow-x: auto; }
     .tbl-wrap table thead th {
-      position: sticky;
-      z-index: 4;
-      background: var(--bg, #F8F7F4) !important;
+      position: sticky; top: 0; z-index: 4;
+      background: #F8F7F4 !important;
+      border-bottom: 2px solid #b4b2a9 !important;
     }
-    .tbl-wrap table thead tr:first-child th {
-      top: 0;
-      box-shadow: 0 1px 0 #b4b2a9;
+    td.col-cama { background: #ffffff !important; z-index: 2; }
+    th.col-cama { background: #F8F7F4 !important; z-index: 6 !important; }
+    td.col-cama, th.col-cama {
+      min-width: 72px !important; white-space: nowrap !important;
+      overflow: visible !important; position: sticky; left: 0;
     }
-    .tbl-wrap table thead tr:last-child th {
-      top: 33px;
-      box-shadow: 0 2px 0 #b4b2a9;
-    }
-    td.col-cama { background: var(--surface, #fff) !important; z-index: 2; }
-    th.col-cama { z-index: 5 !important; background: var(--bg, #F8F7F4) !important; }
     /* Fila de info paciente */
     tr.dx-row td { background: #F8F7F4; border-bottom: 2px solid #C8C6BC !important; }
     /* Vincular btn */
@@ -90,6 +88,13 @@
     .vincular-item:hover{background:var(--azul-lt);border-color:var(--azul);}
     .vincular-nombre{font-weight:600;color:var(--texto);}
     .vincular-datos{color:var(--texto-2);font-size:11px;margin-top:2px;}
+
+    /* Segunda fila de encabezado (censos de enfermería) */
+    .tbl-wrap table thead tr:nth-child(2) th {
+      top: 32px !important;
+      background: #F8F7F4 !important;
+      border-bottom: 2px solid #b4b2a9 !important;
+    }
   </style>
 </head>
 <body>

@@ -76,24 +76,17 @@
       overflow-y: auto;
       overflow-x: auto;
     }
-    /* Sticky thead — funciona con table-layout:auto */
-    .tbl-wrap table thead tr:first-child th {
+    /* Sticky thead — sólido, sin huecos transparentes */
+    .tbl-wrap table thead th {
       position: sticky;
       top: 0;
       z-index: 4;
-      background: var(--bg, #F8F7F4);
-      box-shadow: 0 1px 0 #b4b2a9;
+      background: #F8F7F4 !important;
+      border-bottom: 2px solid #b4b2a9 !important;
     }
-    .tbl-wrap table thead tr:last-child th {
-      position: sticky;
-      top: 33px; /* altura de la primera fila de encabezado */
-      z-index: 4;
-      background: var(--bg, #F8F7F4);
-      box-shadow: 0 1px 0 #b4b2a9;
-    }
-    /* Columna cama sticky horizontal */
-    td.col-cama { background: var(--surface, #fff) !important; z-index: 2; }
-    th.col-cama { z-index: 5 !important; }
+    /* Columna cama sticky horizontal + vertical */
+    td.col-cama { background: #ffffff !important; z-index: 2; }
+    th.col-cama { background: #F8F7F4 !important; z-index: 6 !important; }
   </style>
 </head>
 <body>
