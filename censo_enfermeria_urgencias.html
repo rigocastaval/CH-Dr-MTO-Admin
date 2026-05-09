@@ -541,7 +541,16 @@ function closeVAOverlay(){document.getElementById('va-overlay').classList.remove
 function openModalUrg(id){ /* edición directa en celdas */ }
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeVAOverlay();});
-document.getElementById('va-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('va-overlay'))closeVAOverlay();});
+
+document.addEventListener('DOMContentLoaded', () => {
+  const overlay = document.getElementById('va-overlay');
+  if (overlay) {
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) closeVAOverlay();
+    });
+  }
+});
+
 
 // ── HACER CORTE ──
 function hacerCorte(){
