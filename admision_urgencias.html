@@ -378,23 +378,12 @@ const ROLES_SOLO_ADMISION=['ventanilla_admision'];
 (async()=>{
   try{
     currentUser=await requireAuth();
-    if(!currentUser)return;
-    renderHeader(currentUser);
-
-    // Ventanilla de admisión: mostrar SOLO admisión en sidebar
-    if(currentUser.rol==='ventanilla_admision'){
-      // Ocultar sidebar completo y mostrar solo el link de admisión
-      const sidebar=document.getElementById('sidebar');
-      if(sidebar){
-        sidebar.querySelectorAll('.sidebar-section, .sidebar-item').forEach(el=>{
-          el.style.display='none';
-        });
-        const admisionLink=sidebar.querySelector('[href="admision_urgencias.html"]');
-        if(admisionLink){
-          admisionLink.style.display='flex';
-        }
-      }
+    if(!currentUser){
+      document.getElementById('medicos-grid').innerHTML='<div style="font-size:12px;color:var(--texto-3);">Sin sesión activa</div>';
+      document.getElementById('tbody').innerHTML='<tr><td colspan="14" style="text-align:center;padding:2rem;color:#888">Sin sesión activa. Recarga la página.</td></tr>';
+      return;
     }
+    renderHeader(currentUser);
 
     const canEdit=ROLES_ADMISION.includes(currentUser.rol);
     const canEditMedicos=['admin','ventanilla_admision','medico_operativo'].includes(currentUser.rol);
@@ -973,6 +962,8 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeV
 document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
 document.getElementById('vincular-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('vincular-overlay'))closeVincular();});
 document.getElementById('corte-admision-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('corte-admision-overlay'))closeCorteAdmision();});
+</script>
+
 <!-- MODAL CORTE ADMISIÓN -->
 <div class="modal-overlay" id="corte-admision-overlay">
   <div class="modal" style="max-width:420px;">
