@@ -235,18 +235,26 @@ const AREAS_URG=['Urgencias','Pediátrico','Toco/Qx'];
 (async()=>{
   try{
     currentUser=await requireAuth();
-    if(!currentUser)return;
+    if(!currentUser){
+      document.getElementById('tbody').innerHTML='<tr><td colspan="20" style="text-align:center;padding:2rem;color:#888">Sin sesión activa. Recarga la página.</td></tr>';
+      return;
+    }
     if(!['admin','jefa_enfermeria'].includes(currentUser.rol)){
       alert('No tienes acceso a esta página.');
       window.location.href='hospitalizacion.html'; return;
     }
     renderHeader(currentUser);
     if(currentUser.rol==='jefa_enfermeria'){
-      document.getElementById('link-hosp').style.display='none';
-      document.getElementById('link-urg').style.display='none';
+      const lh=document.getElementById('link-hosp');
+      const lu=document.getElementById('link-urg');
+      if(lh)lh.style.display='none';
+      if(lu)lu.style.display='none';
     }
     await loadAll();
-  }catch(err){console.error(err);}
+  }catch(err){
+    console.error('Init error:',err);
+    document.getElementById('tbody').innerHTML='<tr><td colspan="20" style="text-align:center;padding:2rem;color:#c00">Error al cargar. Recarga la página.</td></tr>';
+  }
 })();
 
 function setTurno(t,btn){
@@ -257,17 +265,26 @@ function setTurno(t,btn){
 }
 
 async function loadAll(){
-  const[urgRes,enfRes,tabRes]=await Promise.all([
-    db.from('camas_urgencias').select('*').order('sort_order',{ascending:true}),
-    db.from('censo_enfermeria_urgencias').select('*').eq('fecha',currentFecha),
-    db.from('movimientos_turno').select('*').eq('fecha',currentFecha).in('servicio',AREAS_URG)
-  ]);
-  allRows=urgRes.data||[];
-  enfData={};
-  (enfRes.data||[]).forEach(r=>{enfData[r.cama_id]=r;});
-  tableroData={};
-  (tabRes.data||[]).forEach(r=>{tableroData[`${r.servicio}_${r.turno}`]=r;});
-  renderTablero(); renderCenso();
+  try{
+    const[urgRes,enfRes,tabRes]=await Promise.all([
+      db.from('camas_urgencias').select('*').order('sort_order',{ascending:true}),
+      db.from('censo_enfermeria_urgencias').select('*').eq('fecha',currentFecha),
+      db.from('movimientos_turno').select('*').eq('fecha',currentFecha).in('servicio',AREAS_URG)
+    ]);
+    if(urgRes.error){
+      document.getElementById('tbody').innerHTML=`<tr><td colspan="20" style="text-align:center;padding:2rem;color:#c00">Error: ${urgRes.error.message}</td></tr>`;
+      return;
+    }
+    allRows=urgRes.data||[];
+    enfData={};
+    (enfRes.data||[]).forEach(r=>{enfData[r.cama_id]=r;});
+    tableroData={};
+    (tabRes.data||[]).forEach(r=>{tableroData[`${r.servicio}_${r.turno}`]=r;});
+    renderTablero(); renderCenso();
+  }catch(err){
+    console.error('loadAll error:',err);
+    document.getElementById('tbody').innerHTML='<tr><td colspan="20" style="text-align:center;padding:2rem;color:#c00">Error de conexión.</td></tr>';
+  }
 }
 
 function renderTablero(){
