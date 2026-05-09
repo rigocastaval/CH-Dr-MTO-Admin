@@ -176,7 +176,7 @@
       </div>
       <div style="margin-left:auto;display:flex;gap:8px;align-items:center;" class="turno-panel-actions">
         <button class="btn btn-sm btn-primary" onclick="openModalNuevo()">+ Nuevo paciente</button>
-        <button class="btn btn-sm" onclick="window.print()">🖨️ Imprimir</button>
+        <button class="btn btn-sm" style="background:#6366f1;color:#fff;border-color:#6366f1;" onclick="openCorteAdmision()">📄 Hacer corte</button>
       </div>
     </div>
 
@@ -387,10 +387,13 @@ const ROLES_SOLO_ADMISION=['ventanilla_admision'];
     }
 
     const canEdit=ROLES_ADMISION.includes(currentUser.rol);
+    const canEditMedicos=['admin','ventanilla_admision','medico_operativo'].includes(currentUser.rol);
     if(!canEdit){
       document.getElementById('th-accion').style.display='none';
       document.querySelector('.turno-panel-actions').style.display='none';
     }
+    // Guardar si puede editar médicos en variable global
+    window._canEditMedicos = canEditMedicos;
 
     await Promise.all([loadMedicos(), loadAdmision()]);
   }catch(err){
@@ -411,30 +414,31 @@ function renderMedicosPanel(){
   const grid=document.getElementById('medicos-grid');
   const counts={};
   allRows.forEach(r=>{if(r.medico_id&&r.estado==='Atendido')counts[r.medico_id]=(counts[r.medico_id]||0)+1;});
+  const canEdit=window._canEditMedicos!==false;
 
   // Siempre mostrar 3 consultorios
   const slots=[1,2,3];
   grid.innerHTML=slots.map(num=>{
     const m=medicosData.find(x=>x.consultorio===num);
     if(m){
-      return `<div class="medico-card" id="mc-${num}" title="Doble clic para editar"
-        ondblclick="editMedicoCard(${num})"
-        style="cursor:pointer;position:relative;">
+      return `<div class="medico-card" id="mc-${num}"
+        title="${canEdit?'Doble clic para editar':''}"
+        ${canEdit?`ondblclick="editMedicoCard(${num})" style="cursor:pointer;position:relative;"`:'style="position:relative;"'}>
         <div class="cons-badge">${m.consultorio}</div>
         <div>
           <div style="font-weight:500;">${m.nombre}</div>
           <div class="medico-count">Pacientes atendidos: ${counts[m.id]||0}</div>
         </div>
-        <div style="position:absolute;bottom:4px;right:8px;font-size:9px;color:var(--texto-3);">✏️</div>
+        ${canEdit?'<div style="position:absolute;bottom:4px;right:8px;font-size:9px;color:var(--texto-3);">✏️</div>':''}
       </div>`;
     } else {
-      return `<div class="medico-card" id="mc-${num}" title="Doble clic para asignar médico"
-        ondblclick="editMedicoCard(${num})"
-        style="cursor:pointer;border-style:dashed;opacity:.7;">
+      return `<div class="medico-card" id="mc-${num}"
+        title="${canEdit?'Doble clic para asignar médico':''}"
+        ${canEdit?`ondblclick="editMedicoCard(${num})" style="cursor:pointer;border-style:dashed;opacity:.7;"`:'style="border-style:dashed;opacity:.7;"'}>
         <div class="cons-badge" style="background:var(--gris-borde);color:var(--texto-3);">${num}</div>
         <div>
           <div style="color:var(--texto-3);font-size:12px;">— Sin asignar —</div>
-          <div class="medico-count">Doble clic para asignar</div>
+          <div class="medico-count">${canEdit?'Doble clic para asignar':''}</div>
         </div>
       </div>`;
     }
@@ -747,9 +751,226 @@ function seleccionarVincular(nombre,cedula,tipo,edad){
 
 function closeVincular(){document.getElementById('vincular-overlay').classList.remove('open');}
 
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeVincular();}});
+// ── HACER CORTE DE ADMISIÓN ──
+function openCorteAdmision(){
+  document.getElementById('corte-admision-overlay').classList.add('open');
+}
+function closeCorteAdmision(){
+  document.getElementById('corte-admision-overlay').classList.remove('open');
+}
+
+// Generar CSV
+function generarCSV(rows){
+  const headers=['No.','Nombre','RFC/Cédula','Tipo DH','Edad','Men/Adulto','Hora Llegada','Llegada','Síntomas','Consultorio','Doctor','Área','Estado'];
+  const csvRows=[headers.join(',')];
+  rows.forEach(r=>{
+    const row=[
+      r.numero||'',
+      `"${(r.nombre_paciente||'').replace(/"/g,'""')}"`,
+      r.rfc_cedula||'',
+      r.tipo_dh||'',
+      r.edad||'',
+      r.menor_adulto||'',
+      r.hora_llegada||'',
+      r.llegada||'',
+      `"${(r.sintomas||'').replace(/"/g,'""').replace(/\n/g,' ')}"`,
+      r.num_consultorio||'',
+      `"${(r.medico_nombre||'').replace(/"/g,'""')}"`,
+      r.area||'',
+      r.estado||''
+    ];
+    csvRows.push(row.join(','));
+  });
+  return '\ufeff'+csvRows.join('\r\n'); // BOM para Excel
+}
+
+function descargarCSV(rows, filename){
+  const csv=generarCSV(rows);
+  const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// Generar reporte PDF (ventana imprimible)
+function generarPDFAdmision(rows, turno, fecha, limpiar){
+  const areas=['Urgencias','Atención obstétrica','Cirugía programada'];
+  const adultos=rows.filter(r=>r.menor_adulto==='Adulto').length;
+  const menores=rows.filter(r=>r.menor_adulto==='Menor').length;
+  const atendidos=rows.filter(r=>r.estado==='Atendido').length;
+  const espera=rows.filter(r=>r.estado==='Sala de espera').length;
+  const retirados=rows.filter(r=>r.estado==='Se retiró').length;
+
+  const repRows=areas.map(area=>{
+    const ar=rows.filter(r=>r.area===area);
+    return `<tr>
+      <td>${area}</td>
+      <td class="c">${ar.filter(r=>r.menor_adulto==='Adulto').length}</td>
+      <td class="c">${ar.filter(r=>r.menor_adulto==='Menor').length}</td>
+      <td class="c">${ar.filter(r=>r.estado==='Atendido').length}</td>
+      <td class="c">${ar.filter(r=>r.estado==='Sala de espera').length}</td>
+    </tr>`;
+  }).join('');
+
+  const medRows=medicosData.map(m=>{
+    const cnt=rows.filter(r=>r.medico_id===m.id&&r.estado==='Atendido').length;
+    return `<tr><td>Consultorio ${m.consultorio}</td><td>${m.nombre}</td><td class="c">${cnt}</td></tr>`;
+  }).join('');
+
+  const pacRows=rows.map(r=>`<tr>
+    <td class="c">${r.numero||''}</td>
+    <td>${r.nombre_paciente||''}</td>
+    <td>${r.rfc_cedula||''}</td>
+    <td class="c">${r.tipo_dh||''}</td>
+    <td class="c">${r.edad||''}</td>
+    <td class="c">${r.menor_adulto||''}</td>
+    <td class="c">${r.hora_llegada||''}</td>
+    <td>${r.llegada||''}</td>
+    <td>${r.medico_nombre||''}</td>
+    <td>${r.area||''}</td>
+    <td class="c" style="color:${r.estado==='Atendido'?'#27660A':r.estado==='Sala de espera'?'#854F0B':'#888'};">${r.estado||''}</td>
+  </tr>`).join('');
+
+  const win=window.open('','_blank','width=1100,height=900');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <title>Corte Admisión — ${turno} ${fecha}</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:10px;margin:14px;color:#111;}
+    h2{font-size:13px;margin:0 0 2px;}h3{font-size:11px;margin:0 0 8px;color:#555;}
+    .encab{display:flex;justify-content:space-between;margin-bottom:10px;border-bottom:2px solid #7B1C3E;padding-bottom:6px;}
+    .stats{display:flex;gap:14px;margin-bottom:10px;}
+    .stat{background:#F5EBF0;padding:4px 12px;border-radius:4px;text-align:center;}
+    .stat .n{font-size:18px;font-weight:700;color:#7B1C3E;}.stat .l{font-size:9px;color:#555;}
+    .sec{margin-bottom:12px;}
+    .sec-t{font-size:11px;font-weight:700;text-transform:uppercase;color:#7B1C3E;margin-bottom:4px;border-bottom:1px solid #7B1C3E;padding-bottom:2px;}
+    table{width:100%;border-collapse:collapse;font-size:9px;}
+    th{background:#7B1C3E;color:#fff;padding:4px 5px;text-align:left;}
+    th.c,td.c{text-align:center;}
+    td{padding:3px 5px;border-bottom:1px solid #E5E5E0;}
+    tr:nth-child(even) td{background:#F8F7F4;}
+    .firmas{margin-top:24px;display:flex;gap:60px;}
+    .firma{text-align:center;flex:1;border-top:1px solid #000;padding-top:3px;font-size:9px;}
+    .limpiar-note{background:#FEF2F2;border:1px solid #fca5a5;border-radius:4px;padding:6px 10px;font-size:10px;color:#991b1b;margin-bottom:10px;}
+    @media print{body{margin:6px;}}
+  </style></head><body>
+  <div class="encab">
+    <div>
+      <h2>Clínica Hospital Dr. Miguel Trejo Ochoa — ISSSTE Colima</h2>
+      <h3>Corte de Admisión Urgencias ${limpiar?'(Con limpieza de registros)':''}</h3>
+    </div>
+    <div style="text-align:right;font-size:10px;">
+      <div><b>Turno:</b> ${turno}</div>
+      <div><b>Fecha:</b> ${fecha}</div>
+      <div><b>Hora:</b> ${new Date().toLocaleTimeString('es-MX')}</div>
+      <div><b>Responsable:</b> ${document.getElementById('responsable').value||currentUser?.nombre||''}</div>
+    </div>
+  </div>
+  ${limpiar?'<div class="limpiar-note">⚠️ Corte con limpieza — los registros fueron eliminados después de este corte.</div>':''}
+  <div class="stats">
+    <div class="stat"><div class="n">${rows.length}</div><div class="l">Total pacientes</div></div>
+    <div class="stat"><div class="n">${adultos}</div><div class="l">Adultos</div></div>
+    <div class="stat"><div class="n">${menores}</div><div class="l">Menores</div></div>
+    <div class="stat"><div class="n" style="color:#27660A;">${atendidos}</div><div class="l">Atendidos</div></div>
+    <div class="stat"><div class="n" style="color:#854F0B;">${espera}</div><div class="l">En espera</div></div>
+    <div class="stat"><div class="n" style="color:#888;">${retirados}</div><div class="l">Se retiraron</div></div>
+  </div>
+  <div class="sec"><div class="sec-t">Reporte por área</div>
+    <table><thead><tr><th>Área</th><th class="c">Adultos</th><th class="c">Menores</th><th class="c">Atendidos</th><th class="c">En espera</th></tr></thead>
+    <tbody>${repRows}</tbody></table>
+  </div>
+  <div class="sec"><div class="sec-t">Pacientes por médico</div>
+    <table><thead><tr><th>Consultorio</th><th>Médico</th><th class="c">Pacientes atendidos</th></tr></thead>
+    <tbody>${medRows||'<tr><td colspan="3" style="text-align:center;color:#888;">Sin médicos registrados</td></tr>'}</tbody></table>
+  </div>
+  <div class="sec"><div class="sec-t">Lista completa de pacientes (${rows.length})</div>
+    <table><thead><tr>
+      <th class="c">No.</th><th>Nombre</th><th>Cédula</th><th class="c">Tipo</th><th class="c">Edad</th>
+      <th class="c">M/A</th><th class="c">Hora</th><th>Llegada</th><th>Doctor</th><th>Área</th><th class="c">Estado</th>
+    </tr></thead><tbody>${pacRows}</tbody></table>
+  </div>
+  <div class="firmas">
+    <div class="firma">Firma quien entrega</div>
+    <div class="firma">Firma quien recibe</div>
+  </div>
+  <script>window.onload=()=>window.print();<\/script>
+  </body></html>`);
+  win.document.close();
+}
+
+async function ejecutarCorteAdmision(limpiar){
+  closeCorteAdmision();
+  const turno=document.getElementById('turno').value;
+  const fecha=document.getElementById('fecha-turno').value||new Date().toISOString().split('T')[0];
+  const filename=`admision_${fecha}_${turno.replace(/ /g,'_')}`;
+
+  // Descargar CSV
+  descargarCSV(allRows, `${filename}.csv`);
+
+  // Generar PDF imprimible
+  setTimeout(()=>generarPDFAdmision(allRows, turno, fecha, limpiar), 500);
+
+  // Si es corte con limpieza, borrar registros
+  if(limpiar){
+    const ids=allRows.map(r=>r.id);
+    if(ids.length>0){
+      const{error}=await db.from('admision_urgencias').delete().in('id',ids);
+      if(error){showToast('Error al limpiar: '+error.message,'error');return;}
+      showToast('Corte realizado y lista limpiada','success');
+      await loadAdmision();
+    }
+  } else {
+    showToast('Corte realizado — registros conservados','success');
+  }
+}
+
+function confirmarCorteConLimpieza(){
+  if(confirm('⚠️ Esta acción descargará el reporte y ELIMINARÁ todos los registros actuales.\n\n¿Confirmas?')){
+    ejecutarCorteAdmision(true);
+  }
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeVincular();closeCorteAdmision();}});
 document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
 document.getElementById('vincular-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('vincular-overlay'))closeVincular();});
-</script>
+document.getElementById('corte-admision-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('corte-admision-overlay'))closeCorteAdmision();});
+<!-- MODAL CORTE ADMISIÓN -->
+<div class="modal-overlay" id="corte-admision-overlay">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title">📄 Hacer corte de turno</div>
+    <div style="font-size:13px;color:var(--texto-2);margin-bottom:16px;">
+      Turno: <b>${document.getElementById ? '' : ''}</b> — ¿Qué tipo de corte deseas hacer?
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+
+      <div style="border:1px solid var(--gris-borde);border-radius:var(--radio);padding:14px;cursor:pointer;transition:background .15s;"
+        onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''"
+        onclick="ejecutarCorteAdmision(false)">
+        <div style="font-weight:600;font-size:13px;margin-bottom:4px;">📊 Solo hacer corte</div>
+        <div style="font-size:11px;color:var(--texto-2);">
+          Descarga el reporte en <b>.csv</b> (Excel) y genera el PDF para imprimir.<br/>
+          Los registros de pacientes se <b>conservan</b>.
+        </div>
+      </div>
+
+      <div style="border:1px solid #fca5a5;border-radius:var(--radio);padding:14px;cursor:pointer;transition:background .15s;"
+        onmouseover="this.style.background='#FEF2F2'" onmouseout="this.style.background=''"
+        onclick="confirmarCorteConLimpieza()">
+        <div style="font-weight:600;font-size:13px;color:#991b1b;margin-bottom:4px;">🗑️ Hacer corte y limpiar lista</div>
+        <div style="font-size:11px;color:var(--texto-2);">
+          Descarga el reporte en <b>.csv</b> y PDF, luego <b>elimina todos los registros</b> de la lista actual.<br/>
+          Útil para iniciar un nuevo turno desde cero.
+        </div>
+      </div>
+
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeCorteAdmision()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
