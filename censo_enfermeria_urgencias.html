@@ -394,7 +394,7 @@ function calcDEH(fi){
 // Fix 1A: taCell helper for editable textarea cells
 function taCell(val, rowId, field){
   // Filter out boolean false — show empty string instead of "false"
-  const display = (val === false || val === null || val === undefined) ? '' : String(val);
+  const display = (val === false || val === null || val === undefined || val === 'false') ? '' : String(val);
   return `<textarea class="input-cell" rows="1"
     onchange="updateField('${rowId}','${field}',this.value)"
     oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
@@ -643,23 +643,24 @@ function openEditModal(camaId){
   document.getElementById('eu-ingreso').value=cama.fecha_ingreso||'';
   document.getElementById('eu-dx').value=cama.diagnostico||'';
   document.getElementById('eu-triaje').value=cama.triaje||'Verde';
-  document.getElementById('eu-lab').value=e.estudios_lab||'';
-  document.getElementById('eu-img').value=e.estudios_imagen||'';
-  document.getElementById('eu-hcu').value=e.hem_cu||'';
-  document.getElementById('eu-rx').value=e.rx||'';
-  document.getElementById('eu-cur').value=e.curaciones||'';
-  document.getElementById('eu-cvc').value=e.cvc||'';
-  document.getElementById('eu-vvp').value=e.infusiones||'';
-  document.getElementById('eu-vm').value=e.ventilador_mecanico||'';
-  document.getElementById('eu-cpap').value=e.cpap||'';
-  document.getElementById('eu-o2').value=e.oxigeno_litros||'';
-  document.getElementById('eu-sol').value=e.soluciones_parenterales||'';
-  document.getElementById('eu-gluc').value=e.glucosa||'';
-  document.getElementById('eu-diu').value=e.diuresis||'';
-  document.getElementById('eu-abx').value=e.antibioticos||'';
-  document.getElementById('eu-ic').value=e.inter_consulta||'';
-  document.getElementById('eu-ce').value=e.cuidados_especiales||'';
-  document.getElementById('eu-pend').value=e.pendientes||'';
+  const enfVal = v => (v === false || v === null || v === undefined || v === 'false') ? '' : String(v);
+  document.getElementById('eu-lab').value=enfVal(e.estudios_lab);
+  document.getElementById('eu-img').value=enfVal(e.estudios_imagen);
+  document.getElementById('eu-hcu').value=enfVal(e.hem_cu);
+  document.getElementById('eu-rx').value=enfVal(e.rx);
+  document.getElementById('eu-cur').value=enfVal(e.curaciones);
+  document.getElementById('eu-cvc').value=enfVal(e.cvc);
+  document.getElementById('eu-vvp').value=enfVal(e.infusiones);
+  document.getElementById('eu-vm').value=enfVal(e.ventilador_mecanico);
+  document.getElementById('eu-cpap').value=enfVal(e.cpap);
+  document.getElementById('eu-o2').value=enfVal(e.oxigeno_litros);
+  document.getElementById('eu-sol').value=enfVal(e.soluciones_parenterales);
+  document.getElementById('eu-gluc').value=enfVal(e.glucosa);
+  document.getElementById('eu-diu').value=enfVal(e.diuresis);
+  document.getElementById('eu-abx').value=enfVal(e.antibioticos);
+  document.getElementById('eu-ic').value=enfVal(e.inter_consulta);
+  document.getElementById('eu-ce').value=enfVal(e.cuidados_especiales);
+  document.getElementById('eu-pend').value=enfVal(e.pendientes);
   document.getElementById('edit-urg-overlay').classList.add('open');
 }
 
@@ -1009,9 +1010,6 @@ function hacerCorte(){
     </div>
   </div>
 </div>
-
-<!-- MODAL VINCULAR ADMISIÓN -->
-<div class="modal-overlay" id="va-overlay" style="z-index:600;">
 
 <!-- MODAL ASIGNAR CAMA VACÍA -->
 <div class="modal-overlay" id="asig-overlay">
