@@ -56,24 +56,38 @@
     .triaje-N{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:#FAEEDA;color:var(--naranja);}
     .triaje-A{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:#FFF9E6;color:#BA7517;}
     .triaje-V{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:var(--verde-lt);color:var(--verde);}
-  
-    /* Columna cama — ancho fijo generoso, siempre visible */
+    /* ── STICKY HEADER DEFINITIVO ─────────────────────────────────── */
+    /* Columna cama siempre visible horizontalmente */
     td.col-cama, th.col-cama {
       min-width: 72px !important;
-      max-width: 90px !important;
       white-space: nowrap !important;
       overflow: visible !important;
-      text-overflow: unset !important;
+      position: sticky;
+      left: 0;
+      z-index: 2;
     }
-    .tbl-wrap table { table-layout: auto !important; }
+    th.col-cama { z-index: 6 !important; background: #F8F7F4 !important; }
+    td.col-cama { background: #ffffff !important; }
+
+    /* Scroll */
     .tbl-wrap { max-height: 72vh; overflow-y: auto; overflow-x: auto; }
-    /* Sticky thead — sólido, sin huecos */
-    .tbl-wrap table { table-layout: auto !important; }
-    .tbl-wrap { max-height: 72vh; overflow-y: auto; overflow-x: auto; }
+    .tbl-wrap table { table-layout: auto !important; border-collapse: separate !important; border-spacing: 0; }
+
+    /* thead sticky como bloque completo — ambas filas se mueven juntas */
+    .tbl-wrap table thead {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
     .tbl-wrap table thead th {
-      position: sticky; top: 0; z-index: 4;
       background: #F8F7F4 !important;
-      border-bottom: 2px solid #b4b2a9 !important;
+      border-bottom: 1px solid #a8a6a0 !important;
+      border-right: 1px solid #C8C6BC !important;
+      position: relative;
+    }
+    /* Línea separadora visible debajo del thead completo */
+    .tbl-wrap table thead tr:last-child th {
+      box-shadow: 0 2px 0 #a8a6a0;
     }
     td.col-cama { background: #ffffff !important; z-index: 2; }
     th.col-cama { background: #F8F7F4 !important; z-index: 6 !important; }
@@ -88,13 +102,6 @@
     .vincular-item:hover{background:var(--azul-lt);border-color:var(--azul);}
     .vincular-nombre{font-weight:600;color:var(--texto);}
     .vincular-datos{color:var(--texto-2);font-size:11px;margin-top:2px;}
-
-    /* Segunda fila de encabezado (censos de enfermería) */
-    .tbl-wrap table thead tr:nth-child(2) th {
-      top: 32px !important;
-      background: #F8F7F4 !important;
-      border-bottom: 2px solid #b4b2a9 !important;
-    }
   </style>
 </head>
 <body>
