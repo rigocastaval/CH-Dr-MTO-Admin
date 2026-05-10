@@ -414,13 +414,10 @@ function renderCenso(){
 
     if(vacio){
       return `<tr data-id="${r.id}" data-cama="${r.numero_cama}"
-        ondragover="onDragOverEnf(event)" ondrop="onDropEnf(event)" ondragleave="this.classList.remove('drag-over-enf')"
-        ondblclick="openVincularAdmision('${r.id}')">
-        <td class="col-cama" style="cursor:pointer;"><span class="cama-lbl">${r.numero_cama}</span></td>
-        <td colspan="${totalCols+1}" style="cursor:pointer;">
-          <span class="empty-cell">— disponible — </span>
-          <span style="font-size:10px;color:var(--azul);margin-left:8px;">doble clic para asignar / vincular</span>
-        </td>
+        ondragover="onDragOverEnf(event)" ondrop="onDropEnf(event)" ondragleave="this.classList.remove('drag-over-enf')">
+        <td class="col-cama" style="vertical-align:middle;"><span class="cama-lbl">${r.numero_cama}</span></td>
+        <td colspan="${totalCols}" style="color:var(--texto-3);font-style:italic;font-size:11px;">— disponible —</td>
+        <td><button class="btn btn-sm" onclick="openAsignarModal('${r.id}')">Asignar</button></td>
       </tr>`;
     }
 
@@ -580,11 +577,23 @@ function renderVincularAdmision(list){
 
 async function seleccionarDeAdmision(nombre,cedula,tipo,edad,sintomas){
   closeVAOverlay();
+
+  // If we came from asignarModal context, fill that form
+  if(asignarCamaId && !assigningCamaId){
+    document.getElementById('asig-nombre').value=nombre;
+    document.getElementById('asig-cedula').value=cedula;
+    document.getElementById('asig-tipo').value=tipo;
+    document.getElementById('asig-edad').value=edad||'';
+    document.getElementById('asig-dx').value=sintomas||'';
+    document.getElementById('asig-ingreso').value=new Date().toISOString().split('T')[0];
+    document.getElementById('asig-overlay').classList.add('open');
+    return;
+  }
+
+  // Original flow: direct assign from vincular
   if(!assigningCamaId)return;
   const cama=allRows.find(r=>r.id===assigningCamaId);
   if(!cama)return;
-
-  // Asignar paciente a la cama de urgencias desde admisión
   const payload={
     nombre_paciente:nombre,
     cedula:cedula||null,
@@ -593,7 +602,7 @@ async function seleccionarDeAdmision(nombre,cedula,tipo,edad,sintomas){
     diagnostico:sintomas||null,
     fecha_ingreso:new Date().toISOString().split('T')[0],
     triaje:'Verde',
-    servicio:'Urgen',
+    servicio:'URGEN',
     ventilador:false, aislado:false, caso_riesgo:false,
   };
   const{error}=await db.from('camas_urgencias').update(payload).eq('id',assigningCamaId);
@@ -608,14 +617,12 @@ function closeVAOverlay(){document.getElementById('va-overlay').classList.remove
 // Modal legacy — ya no se usa, pero mantener por compatibilidad
 function openModalUrg(id){ /* edición directa en celdas */ }
 
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeVAOverlay();closeEditModalUrg();closeEnfAltaModal();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeVAOverlay();closeEditModalUrg();closeEnfAltaModal();closeAsignarModal();}});
 document.addEventListener('DOMContentLoaded',()=>{
-  const vaOverlay=document.getElementById('va-overlay');
-  if(vaOverlay) vaOverlay.addEventListener('click',e=>{if(e.target===vaOverlay)closeVAOverlay();});
-  const editOverlay=document.getElementById('edit-urg-overlay');
-  if(editOverlay) editOverlay.addEventListener('click',e=>{if(e.target===editOverlay)closeEditModalUrg();});
-  const altaOverlay=document.getElementById('enf-alta-overlay');
-  if(altaOverlay) altaOverlay.addEventListener('click',e=>{if(e.target===altaOverlay)closeEnfAltaModal();});
+  ['va-overlay','edit-urg-overlay','enf-alta-overlay','asig-overlay'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.addEventListener('click',ev=>{if(ev.target===el) el.classList.remove('open');});
+  });
 });
 
 // ── MODAL EDICIÓN PACIENTE ENFERMERÍA URGENCIAS ──
@@ -839,6 +846,93 @@ async function registrarEnfEgreso(motivo, fecha, camaHosp){
   closeEnfAltaModal(); editingUrgId=null;
   await loadAll();
 }
+
+// ── MODAL ASIGNAR CAMA VACÍA (igual que censo urgencias) ──
+let asignarCamaId=null;
+
+function openAsignarModal(camaId){
+  asignarCamaId=camaId;
+  const cama=allRows.find(r=>r.id===camaId);
+  document.getElementById('asig-cama').value=cama?.numero_cama||'';
+  document.getElementById('asig-nombre').value='';
+  document.getElementById('asig-cedula').value='';
+  document.getElementById('asig-tipo').value='';
+  document.getElementById('asig-edad').value='';
+  document.getElementById('asig-sexo').value='';
+  document.getElementById('asig-servicio').value='';
+  document.getElementById('asig-triaje').value='Verde';
+  document.getElementById('asig-ingreso').value=new Date().toISOString().split('T')[0];
+  document.getElementById('asig-dx').value='';
+  document.getElementById('asig-overlay').classList.add('open');
+}
+function closeAsignarModal(){document.getElementById('asig-overlay').classList.remove('open');asignarCamaId=null;}
+
+async function saveAsignarModal(){
+  const nombre=document.getElementById('asig-nombre').value.trim();
+  if(!nombre){showToast('El nombre es obligatorio','error');return;}
+  const payload={
+    nombre_paciente: nombre,
+    cedula:          document.getElementById('asig-cedula').value.trim()||null,
+    tipo_dh:         document.getElementById('asig-tipo').value||null,
+    edad:            parseInt(document.getElementById('asig-edad').value)||null,
+    sexo:            document.getElementById('asig-sexo').value||null,
+    servicio:        document.getElementById('asig-servicio').value||null,
+    triaje:          document.getElementById('asig-triaje').value||'Verde',
+    fecha_ingreso:   document.getElementById('asig-ingreso').value||null,
+    diagnostico:     document.getElementById('asig-dx').value.trim()||null,
+    ventilador:false, aislado:false, caso_riesgo:false,
+  };
+  const{error}=await db.from('camas_urgencias').update(payload).eq('id',asignarCamaId);
+  if(error){showToast('Error: '+error.message,'error');return;}
+  showToast('Paciente asignado','success');
+  closeAsignarModal();
+  await loadAll();
+}
+
+function vincularDesdeAdmisionAsig(){
+  closeAsignarModal();
+  openVincularAdmision(asignarCamaId);
+}
+
+function hacerCorte(){
+  const turnoLabels={'M':'Matutino','V':'Vespertino','NLMV':'Nocturno LMV','NMJV':'Nocturno MJV','JD':'Jornada Diurna','JN':'Jornada Nocturna'};
+  const turnoLabel=turnoLabels[currentTurno]||currentTurno;
+  const fecha=document.getElementById('fecha-censo').value||currentFecha;
+  const ocupadas=allRows.filter(r=>r.nombre_paciente);
+  const filas=ocupadas.map(r=>{
+    const e=enfData[r.id]||{};
+    return `<tr>
+      <td style="font-weight:700;">${r.numero_cama}</td>
+      <td>${r.triaje||''}</td>
+      <td style="font-weight:600;">${r.nombre_paciente||''}</td>
+      <td>${r.cedula||''}</td>
+      <td style="text-align:center;">${r.edad||''}</td>
+      <td style="color:#555;">${r.diagnostico||''}</td>
+      <td>${e.infusiones||''}</td>
+      <td>${e.antibioticos||''}</td>
+      <td>${e.cuidados_especiales||''}</td>
+      <td>${e.pendientes||''}</td>
+    </tr>`;
+  }).join('');
+  const win=window.open('','_blank','width=1100,height=800');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <title>Corte Enfermería Urgencias</title>
+  <style>body{font-family:Arial;font-size:10px;margin:14px;}
+  table{width:100%;border-collapse:collapse;}
+  th{background:#7B1C3E;color:#fff;padding:4px 5px;text-align:left;}
+  td{padding:3px 5px;border-bottom:1px solid #ddd;}
+  tr:nth-child(even) td{background:#f9f9f9;}
+  @media print{body{margin:6px;}}</style></head><body>
+  <h3 style="color:#7B1C3E;">Corte Enfermería — Urgencias | ${turnoLabel} | ${fecha}</h3>
+  <table><thead><tr>
+    <th>Cama</th><th>Triaje</th><th>Nombre</th><th>Cédula</th>
+    <th>Edad</th><th>Diagnóstico</th><th>VVP/Inf.</th>
+    <th>Antibióticos</th><th>Cuidados Esp.</th><th>Pendientes</th>
+  </tr></thead><tbody>${filas}</tbody></table>
+  <script>window.onload=()=>window.print();<\/script>
+  </body></html>`);
+  win.document.close();
+}
 </script>
 
 <!-- MODAL EDICIÓN ENFERMERÍA URGENCIAS -->
@@ -918,77 +1012,63 @@ async function registrarEnfEgreso(motivo, fecha, camaHosp){
 
 <!-- MODAL VINCULAR ADMISIÓN -->
 <div class="modal-overlay" id="va-overlay" style="z-index:600;">
-function hacerCorte(){
-  const turnoLabel={'M':'Matutino','V':'Vespertino','N':'Nocturno'}[currentTurno]||currentTurno;
-  const fecha=document.getElementById('fecha-censo').value||currentFecha;
-  const ocupadas=allRows.filter(r=>r.nombre_paciente);
-  const filas=ocupadas.map(r=>{
-    const e=enfData[r.id]||{};
-    return `<tr>
-      <td style="font-weight:700;">${r.numero_cama}</td>
-      <td><span style="font-size:9px;padding:1px 5px;border-radius:3px;background:${r.triaje==='Rojo'?'#FCEBEB':r.triaje==='Naranja'?'#FAEEDA':'#EAF3DE'};color:${r.triaje==='Rojo'?'#A32D2D':r.triaje==='Naranja'?'#854F0B':'#3B6D11'};">${r.triaje||''}</span></td>
-      <td style="font-weight:600;">${r.nombre_paciente||''}</td>
-      <td style="font-size:10px;">${r.cedula||''}</td>
-      <td style="text-align:center;">${r.edad||''}</td>
-      <td style="font-size:10px;color:#555;">${r.diagnostico||''}</td>
-      <td style="font-size:10px;">${e.infusiones||''}</td>
-      <td style="font-size:10px;">${e.antibioticos||''}</td>
-      <td style="font-size:10px;">${e.cuidados_especiales||''}</td>
-      <td style="font-size:10px;">${e.pendientes||''}</td>
-    </tr>`;
-  }).join('');
 
-  const win=window.open('','_blank','width=1100,height=800');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
-  <title>Corte de Enfermería — Urgencias</title>
-  <style>
-    body{font-family:Arial,sans-serif;font-size:11px;margin:16px;color:#111;}
-    h2{font-size:14px;margin:0 0 2px;} h3{font-size:12px;margin:0 0 10px;color:#555;}
-    .encab{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;border-bottom:2px solid #E24B4A;padding-bottom:8px;}
-    .stats{display:flex;gap:24px;margin-bottom:12px;}
-    .stat{background:#F1EFE8;padding:6px 14px;border-radius:6px;text-align:center;}
-    .stat .n{font-size:22px;font-weight:700;color:#E24B4A;} .stat .l{font-size:10px;color:#555;}
-    table{width:100%;border-collapse:collapse;font-size:10px;}
-    th{background:#E24B4A;color:#fff;padding:5px 6px;text-align:left;font-size:9px;}
-    td{padding:4px 6px;border-bottom:1px solid #E5E5E0;vertical-align:top;}
-    tr:nth-child(even) td{background:#F8F7F4;}
-    @media print{body{margin:8px;}}
-  </style></head><body>
-  <div class="encab">
-    <div>
-      <h2>Clínica Hospital Dr. Miguel Trejo Ochoa</h2>
-      <h3>Corte de Enfermería — Urgencias</h3>
+<!-- MODAL ASIGNAR CAMA VACÍA -->
+<div class="modal-overlay" id="asig-overlay">
+  <div class="modal" style="max-width:500px;">
+    <div class="modal-title" id="asig-title">Asignar paciente</div>
+    <div style="margin-bottom:12px;">
+      <button class="btn btn-sm" style="background:#EEF4FF;border-color:#185FA5;color:#185FA5;font-weight:500;" onclick="vincularDesdeAdmisionAsig()">
+        🔗 Vincular desde Admisión Urgencias
+      </button>
+      <span style="font-size:11px;color:var(--texto-3);margin-left:8px;">O captura manualmente:</span>
     </div>
-    <div style="text-align:right;font-size:11px;">
-      <div><b>Fecha:</b> ${fecha}</div>
-      <div><b>Turno:</b> ${turnoLabel}</div>
-      <div><b>Generado:</b> ${new Date().toLocaleTimeString('es-MX')}</div>
+    <div class="field-row">
+      <div class="field" style="flex:0 0 100px;"><label>Cama</label><input type="text" id="asig-cama" readonly style="background:var(--bg);"/></div>
+      <div class="field" style="flex:0 0 70px;"><label>Sexo</label>
+        <select id="asig-sexo"><option value="">—</option><option value="M">M</option><option value="F">F</option></select>
+      </div>
+      <div class="field" style="flex:0 0 100px;"><label>Triaje</label>
+        <select id="asig-triaje">
+          <option value="Verde">Verde</option><option value="Amarillo">Amarillo</option>
+          <option value="Naranja">Naranja</option><option value="Rojo">Rojo</option>
+        </select>
+      </div>
+      <div class="field" style="flex:0 0 70px;"><label>Edad</label><input type="number" id="asig-edad" min="0" max="120"/></div>
+    </div>
+    <div class="field"><label>Nombre del paciente</label><input type="text" id="asig-nombre" placeholder="Apellido Paterno Materno Nombre"/></div>
+    <div class="field-row">
+      <div class="field"><label>Cédula</label><input type="text" id="asig-cedula" placeholder="XXXX000000"/></div>
+      <div class="field" style="flex:0 0 80px;"><label>Tipo DH</label>
+        <select id="asig-tipo">
+          <option value="">—</option>
+          <option value="10">10-Trabajador</option><option value="20">20-Trabajadora</option>
+          <option value="30">30-Esposa</option><option value="40">40-Esposo</option>
+          <option value="70">70-Hijo</option><option value="80">80-Hija</option>
+          <option value="90">90-Pensionado</option><option value="91">91-Pensionada</option>
+          <option value="99">99-No DH</option>
+        </select>
+      </div>
+      <div class="field"><label>Servicio</label>
+        <select id="asig-servicio">
+          <option value="">— Sin servicio —</option>
+          <option>MI</option><option>Nefro</option><option>Cx.General</option>
+          <option>TyO</option><option>GyO</option><option>Pedia</option>
+          <option>Neuro Cx</option><option>Cardio</option><option>Uro</option>
+          <option>URGEN</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Fecha ingreso</label><input type="date" id="asig-ingreso"/></div>
+    </div>
+    <div class="field"><label>Diagnóstico</label><textarea id="asig-dx" style="min-height:60px;" placeholder="Diagnóstico principal + comorbilidades"></textarea></div>
+    <div class="modal-footer">
+      <button class="btn btn-sm" onclick="closeAsignarModal()">Cancelar</button>
+      <button class="btn btn-sm btn-primary" onclick="saveAsignarModal()">Guardar</button>
     </div>
   </div>
-  <div class="stats">
-    <div class="stat"><div class="n">${allRows.length}</div><div class="l">Total camas</div></div>
-    <div class="stat"><div class="n" style="color:#854F0B;">${ocupadas.length}</div><div class="l">Ocupadas</div></div>
-    <div class="stat"><div class="n" style="color:#3B6D11;">${allRows.length-ocupadas.length}</div><div class="l">Disponibles</div></div>
-    <div class="stat"><div class="n" style="color:#A32D2D;">${allRows.filter(r=>r.triaje==='Rojo').length}</div><div class="l">Triaje Rojo</div></div>
-  </div>
-  <table>
-    <thead><tr>
-      <th>Cama</th><th>Triaje</th><th>Nombre</th><th>Cédula</th>
-      <th>Edad</th><th>Diagnóstico</th>
-      <th>VVP/Infusiones</th><th>Antibióticos</th>
-      <th>Cuidados Especiales</th><th>Pendientes</th>
-    </tr></thead>
-    <tbody>${filas}</tbody>
-  </table>
-  <div style="margin-top:30px;display:flex;gap:60px;">
-    <div style="text-align:center;flex:1;"><div style="border-top:1px solid #000;padding-top:4px;font-size:10px;">Firma Jefa de Enfermería</div></div>
-    <div style="text-align:center;flex:1;"><div style="border-top:1px solid #000;padding-top:4px;font-size:10px;">Firma Enfermera Responsable</div></div>
-  </div>
-  <script>window.onload=()=>window.print();<\/script>
-  </body></html>`);
-  win.document.close();
-}
-</script>
+</div>
 
 <!-- MODAL ALTA ENFERMERÍA URGENCIAS -->
 <div class="modal-overlay" id="enf-alta-overlay">
