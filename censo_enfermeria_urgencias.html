@@ -12,168 +12,636 @@
     .tablero-table{width:100%;border-collapse:collapse;font-size:11px;}
     .tablero-table th{background:var(--bg);padding:5px 8px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--texto-2);border:1px solid var(--gris-borde);}
     .tablero-table th.serv{text-align:left;min-width:120px;}
-    .tablero-table td{padding:6px 8px;border:1px solid var(--gris-borde);text-align:center;font-weight:600;color:var(--texto);}
-    .tablero-table td.serv-n{text-align:left;font-weight:500;color:var(--texto-2);}
+    .tablero-table td{padding:4px 8px;border:1px solid var(--gris-borde);text-align:center;font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:500;color:var(--texto);}
+    .tablero-table td.serv-label{text-align:left;font-family:var(--font-sans);font-weight:600;font-size:12px;background:var(--bg);}
+    .tablero-table tr.total-row td{background:#EEF4FF;font-weight:700;color:var(--azul);}
+    .tablero-table input.mov-input{width:36px;padding:2px 4px;border:1px solid var(--gris-borde);border-radius:3px;text-align:center;font-size:12px;font-family:'IBM Plex Mono',monospace;background:var(--surface);}
+    .th-group{background:#E6F1FB!important;color:var(--azul-dk)!important;}
+    .turno-bar{display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+    .turno-btn{padding:6px 16px;border-radius:20px;border:1px solid var(--gris-borde);background:var(--surface);font-size:12px;font-weight:500;cursor:pointer;color:var(--texto-2);transition:all .15s;}
+    .turno-btn.active{background:var(--azul);color:#fff;border-color:var(--azul);}
 
-    .main-table thead th{position:sticky;top:0;z-index:10;background:var(--bg);box-shadow:0 1px 0 var(--gris-borde);}
-    .cama-cell{font-weight:700;color:var(--azul);font-size:13px;}
-    .input-cell{width:100%;border:none;background:transparent;font-family:inherit;font-size:11px;resize:none;padding:2px;display:block;color:var(--texto);}
-    .input-cell:focus{background:#fff;outline:1px solid var(--azul);border-radius:2px;}
+    /* Columna cama fija */
+    td.col-cama,th.col-cama{position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:2px 0 5px rgba(0,0,0,.07);min-width:66px;white-space:nowrap;}
+    thead th.col-cama{background:var(--bg);z-index:3;}
+    .th-group-label{background:#F1EFE8;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--texto-2);text-align:center;padding:3px 4px;border-bottom:1px solid var(--gris-borde);}
 
-    @media print{
-      .sidebar,.header,.btn-group,.search-bar,.tablero,.no-print{display:none!important;}
-      .app-layout{display:block!important;padding:0!important;}
-      .content{padding:0!important;background:#fff!important;}
-      .card{border:none!important;box-shadow:none!important;padding:0!important;}
-      table{font-size:9px!important;}
-      .input-cell{border:none!important;font-size:9px!important;}
+    /* Inputs */
+    .input-cell{width:100%;border:none;background:transparent;font-size:10px;color:var(--texto);font-family:var(--font-sans);padding:0;outline:none;resize:none;overflow:hidden;min-height:16px;line-height:1.4;}
+    .input-cell:focus{background:var(--azul-lt);border-radius:2px;padding:1px 2px;}
+    td.editable{padding:3px 5px;vertical-align:top;}
+
+    /* 2 filas por paciente */
+    #censo-table tbody tr{border-bottom:none;}
+    #censo-table td{vertical-align:middle;white-space:normal;word-break:break-word;}
+
+    /* Drag & drop */
+    tr.dragging-enf{opacity:.3;}
+    tr.drag-over-enf td{border-top:2px solid var(--azul)!important;}
+    .drag-handle-enf{cursor:grab;color:var(--texto-3);font-size:13px;padding:0 3px;user-select:none;}
+
+    tr:hover td{background:#FAFAF8;}
+    tr:hover td.col-cama{background:var(--surface);}
+    .save-row-btn{font-size:9px;padding:2px 6px;border:1px solid var(--azul);border-radius:3px;background:var(--azul-lt);color:var(--azul);cursor:pointer;}
+    .save-row-btn:hover{background:var(--azul);color:#fff;}
+    /* CUADRÍCULA VISIBLE */
+    #censo-table th, #censo-table td {
+      border: 1px solid #C8C6BC !important;
+    }
+    #censo-table thead th { border-color: #a8a6a0 !important; }
+    tr.dx-row td { border-bottom: 2px solid #a8a6a0 !important; }
+
+
+    .triaje-R{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:var(--rojo-lt);color:var(--rojo);}
+    .triaje-N{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:#FAEEDA;color:var(--naranja);}
+    .triaje-A{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:#FFF9E6;color:#BA7517;}
+    .triaje-V{font-size:9px;padding:1px 5px;border-radius:3px;font-weight:600;background:var(--verde-lt);color:var(--verde);}
+  
+    /* Columna cama — ancho fijo generoso, siempre visible */
+    td.col-cama, th.col-cama {
+      min-width: 72px !important;
+      max-width: 90px !important;
+      white-space: nowrap !important;
+      overflow: visible !important;
+      text-overflow: unset !important;
+    }
+    .tbl-wrap table { table-layout: auto !important; }
+    .tbl-wrap { max-height: 72vh; overflow-y: auto; overflow-x: auto; }
+    /* Sticky thead — sólido, sin huecos */
+    .tbl-wrap table { table-layout: auto !important; }
+    .tbl-wrap { max-height: 72vh; overflow-y: auto; overflow-x: auto; }
+    .tbl-wrap table thead th {
+      position: sticky; top: 0; z-index: 4;
+      background: #F8F7F4 !important;
+      border-bottom: 2px solid #b4b2a9 !important;
+    }
+    td.col-cama { background: #ffffff !important; z-index: 2; }
+    th.col-cama { background: #F8F7F4 !important; z-index: 6 !important; }
+    td.col-cama, th.col-cama {
+      min-width: 72px !important; white-space: nowrap !important;
+      overflow: visible !important; position: sticky; left: 0;
+    }
+    /* Fila de info paciente */
+    tr.dx-row td { background: #F8F7F4; border-bottom: 2px solid #C8C6BC !important; }
+    /* Vincular btn */
+    .vincular-item{padding:8px 12px;border:1px solid var(--gris-borde);border-radius:var(--radio);cursor:pointer;font-size:12px;background:var(--surface);margin-bottom:6px;transition:background .12s;}
+    .vincular-item:hover{background:var(--azul-lt);border-color:var(--azul);}
+    .vincular-nombre{font-weight:600;color:var(--texto);}
+    .vincular-datos{color:var(--texto-2);font-size:11px;margin-top:2px;}
+
+    /* Segunda fila de encabezado (censos de enfermería) */
+    .tbl-wrap table thead tr:nth-child(2) th {
+      top: 32px !important;
+      background: #F8F7F4 !important;
+      border-bottom: 2px solid #b4b2a9 !important;
     }
   </style>
 </head>
 <body>
-<header class="header no-print">
+
+<header class="header">
   <div class="header-left">
     <img src="logo_issste.png" alt="ISSSTE" style="height:36px;object-fit:contain;"/>
   </div>
   <div class="header-right">
     <span class="header-date" id="fecha-hoy"></span>
     <span id="hdr-user" style="font-size:12px;color:var(--texto-2);"></span>
+    <span id="hdr-badge" class="badge badge-admin">Admin</span>
     <button class="btn btn-sm" onclick="logout()">Salir</button>
   </div>
 </header>
 
 <div class="app-layout">
-  <nav class="sidebar no-print">
+  <nav class="sidebar">
     <div class="sidebar-section">Servicios</div>
-    <a class="sidebar-item" href="hospitalizacion.html"><span class="sidebar-dot" style="background:#7B1C3E;"></span>Hospitalización</a>
-    <a class="sidebar-item active" href="urgencias.html"><span class="sidebar-dot" style="background:#E24B4A;"></span>Urgencias</a>
-    <div class="sidebar-section">Censos Enfermería</div>
-    <a class="sidebar-item" href="censo_enfermeria_hospital.html">Censo Hospital</a>
-    <a class="sidebar-item active" href="censo_enfermeria_urgencias.html">Censo Urgencias</a>
-    <div class="sidebar-section">Reportes</div>
-    <a class="sidebar-item" href="admision_urgencias.html">Admisión Urgencias</a>
-    <a class="sidebar-item" href="egresos_hospital.html">Egresos Hospital</a>
-    <a class="sidebar-item" href="egresos_urgencias.html">Egresos Urgencias</a>
+    <a class="sidebar-item" href="hospitalizacion.html" id="link-hosp"><span class="sidebar-dot" style="background:#7B1C3E;"></span>Hospitalización</a>
+    <a class="sidebar-item" href="urgencias.html" id="link-urg"><span class="sidebar-dot" style="background:#E24B4A;"></span>Urgencias</a>
+    <div class="sidebar-section">Egresos</div>
+    <a class="sidebar-item" href="egresos_hospital.html"><span class="sidebar-dot" style="background:#22c55e;"></span>Egresos Hospital</a>
+    <a class="sidebar-item" href="egresos_urgencias.html"><span class="sidebar-dot" style="background:#f59e0b;"></span>Egresos Urgencias</a>
+    <div class="sidebar-section">Admisión</div>
+    <a class="sidebar-item" href="admision_urgencias.html"><span class="sidebar-dot" style="background:#E24B4A;"></span>Admisión Urgencias</a>
+    <div class="sidebar-section">Enfermería</div>
+    <a class="sidebar-item" href="censo_enfermeria_hospital.html"><span class="sidebar-dot" style="background:#6366f1;"></span>Censo Enf. Hospital</a>
+    <a class="sidebar-item active" href="censo_enfermeria_urgencias.html"><span class="sidebar-dot" style="background:#C026D3;"></span>Censo Enf. Urgencias</a>
+    <div class="sidebar-section">Informes</div>
+    <a class="sidebar-item" href="reporte.html"><span class="sidebar-dot" style="background:#6366f1;"></span>Reporte</a>
+    <div class="sidebar-section" id="nav-admin-sec">Sistema</div>
+    <a class="sidebar-item" id="nav-admin" href="admin.html"><span class="sidebar-dot" style="background:#854F0B;"></span>Administrador</a>
   </nav>
 
-  <main class="content">
-    <div class="card">
-      <div class="card-header no-print" style="margin-bottom:15px;">
-        <div>
-          <h2 class="card-title">Censo Diario de Enfermería</h2>
-          <p class="card-desc">Urgencias / Choque / Observación</p>
-        </div>
-        <div class="btn-group">
-          <button class="btn btn-outline" onclick="printCenso()">🖨️ Imprimir</button>
-        </div>
+  <main class="main">
+    <div class="turno-bar">
+      <div style="font-size:13px;font-weight:600;color:var(--texto);">Censo de Enfermería — Urgencias</div>
+      <div style="display:flex;gap:6px;margin-left:8px;">
+        <button class="turno-btn active" id="tb-M" onclick="setTurno('M',this)">Matutino (M)</button>
+        <button class="turno-btn" id="tb-V" onclick="setTurno('V',this)">Vespertino (V)</button>
+        <button class="turno-btn" id="tb-N" onclick="setTurno('N',this)">Nocturno (N)</button>
       </div>
+      <input type="date" id="fecha-censo" style="padding:6px 10px;border:1px solid var(--gris-borde);border-radius:var(--radio);font-size:12px;background:var(--bg);"/>
+      <button class="btn btn-sm btn-primary" onclick="guardarTodo()">💾 Guardar todo</button>
+      <button class="btn btn-sm" style="background:#6366f1;color:#fff;border-color:#6366f1;" onclick="hacerCorte()">📄 Hacer corte</button>
+      <button class="btn btn-sm" onclick="window.print()">🖨️ Imprimir</button>
+    </div>
 
-      <div class="tablero no-print">
-        <div class="tablero-title">Resumen de Movimientos</div>
-        <div class="tablero-grid">
-          <table class="tablero-table">
-            <thead>
-              <tr>
-                <th class="serv">Servicio</th>
-                <th>Recibo</th>
-                <th>Ingresos</th>
-                <th>Egresos</th>
-                <th>Existencia</th>
-              </tr>
-            </thead>
-            <tbody id="tablero-body"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="tbl-wrap">
-        <table class="main-table">
+    <!-- TABLERO -->
+    <div class="tablero">
+      <div class="tablero-title">📋 Movimientos Urgencias por turno</div>
+      <div style="overflow-x:auto;">
+        <table class="tablero-table">
           <thead>
             <tr>
-              <th style="width:50px;">Cama</th>
-              <th style="width:180px;">Nombre del Paciente</th>
-              <th style="width:40px;">Sexo</th>
-              <th style="width:40px;">Edad</th>
-              <th style="width:80px;">Ingreso</th>
-              <th>Diagnóstico / Observaciones</th>
-              <th style="width:120px;">Acciones</th>
+              <th class="serv" rowspan="2">Área</th>
+              <th colspan="3" class="th-group">Matutino</th>
+              <th colspan="3" class="th-group">Vespertino</th>
+              <th colspan="3" class="th-group">Nocturno</th>
+            </tr>
+            <tr>
+              <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
+              <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
+              <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
             </tr>
           </thead>
-          <tbody id="tbody-censo"></tbody>
+          <tbody id="tablero-tbody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:8px;text-align:right;">
+        <button class="btn btn-sm btn-primary" onclick="guardarTablero()">💾 Guardar tablero</button>
+      </div>
+    </div>
+
+    <!-- TABLA CENSO -->
+    <div class="table-container">
+      <div class="table-toolbar">
+        <span class="table-toolbar-title">Censo de urgencias — Enfermería</span>
+        <input class="search-input" id="search" type="text" placeholder="Buscar paciente…" oninput="renderCenso()"/>
+      </div>
+      <div class="tbl-wrap">
+        <table id="censo-table">
+          <thead>
+            <tr>
+              <th class="col-cama" rowspan="2" style="background:var(--bg);vertical-align:bottom;">Cama</th>
+              <th rowspan="2" style="min-width:60px;background:var(--bg);vertical-align:bottom;" title="Triaje">Triaje</th>
+              <th colspan="7" class="th-group-label">Procedimientos</th>
+              <th colspan="3" class="th-group-label">Respiratorio</th>
+              <th colspan="3" class="th-group-label">Líquidos</th>
+              <th colspan="1" class="th-group-label">Medicamento</th>
+              <th colspan="3" class="th-group-label">Evaluación / Notas</th>
+              <th rowspan="2" style="min-width:44px;background:var(--bg);vertical-align:bottom;">Acc.</th>
+            </tr>
+            <tr>
+              <th style="min-width:80px;" title="Estudios de Laboratorio">Lab</th>
+              <th style="min-width:80px;" title="Estudios de Imagen">Imagen</th>
+              <th style="min-width:80px;" title="Hemocultivo">HemoCultivo</th>
+              <th style="min-width:60px;" title="Radiografía">RX</th>
+              <th style="min-width:80px;" title="Curaciones de heridas">Curaciones</th>
+              <th style="min-width:80px;" title="Catéter Venoso Central">CVC</th>
+              <th style="min-width:120px;" title="Vía Venosa Periférica / Infusiones">VVP / Infusiones</th>
+              <th style="min-width:80px;" title="Ventilador Mecánico">Ventilador</th>
+              <th style="min-width:80px;" title="CPAP">CPAP</th>
+              <th style="min-width:80px;" title="Oxígeno suplementario">O₂</th>
+              <th style="min-width:100px;" title="Soluciones Parenterales">Sol. Parenterales</th>
+              <th style="min-width:80px;" title="Glucosa capilar">Glucosa</th>
+              <th style="min-width:80px;" title="Diuresis">Diuresis</th>
+              <th style="min-width:130px;" title="Antibióticos / Antimicrobianos">Antibióticos</th>
+              <th style="min-width:90px;" title="Interconsulta">Interconsulta</th>
+              <th style="min-width:150px;" title="Cuidados Especiales">Cuidados Esp.</th>
+              <th style="min-width:150px;" title="Pendientes / Obs. Alta">Pendientes</th>
+            </tr>
+          </thead>
+          <tbody id="tbody">
+            <tr><td colspan="24"><div class="loading"><div class="spinner"></div> Cargando…</div></td></tr>
+          </tbody>
         </table>
       </div>
     </div>
   </main>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js"></script>
+<div class="toast" id="toast"></div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="supabase.js"></script>
 <script>
-const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let currentUser=null, allRows=[], enfData={}, tableroData={};
+let currentTurno='M', currentFecha='';
+let dragSrcEnf=null;
+const AREAS_URG=['Urgencias','Pediátrico','Toco/Qx'];
 
-// --- CORRECCIÓN: Función taCell definida al inicio ---
-function taCell(val, rowId, field) {
+(function(){
+  const d=new Date();
+  const dias=['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const meses=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  document.getElementById('fecha-hoy').textContent=`${dias[d.getDay()]}, ${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+  currentFecha=d.toISOString().split('T')[0];
+  document.getElementById('fecha-censo').value=currentFecha;
+  document.getElementById('fecha-censo').addEventListener('change',ev=>{currentFecha=ev.target.value;loadAll();});
+})();
+
+(async()=>{
+  try{
+    currentUser=await requireAuth();
+    if(!currentUser){
+      document.getElementById('tbody').innerHTML='<tr><td colspan="20" style="text-align:center;padding:2rem;color:#888">Sin sesión activa. Recarga la página.</td></tr>';
+      return;
+    }
+    if(!['admin','jefa_enfermeria'].includes(currentUser.rol)){
+      alert('No tienes acceso a esta página.');
+      window.location.href='hospitalizacion.html'; return;
+    }
+    renderHeader(currentUser);
+    if(currentUser.rol==='jefa_enfermeria'){
+      const lh=document.getElementById('link-hosp');
+      const lu=document.getElementById('link-urg');
+      if(lh)lh.style.display='none';
+      if(lu)lu.style.display='none';
+    }
+    await loadAll();
+  }catch(err){
+    console.error('Init error:',err);
+    document.getElementById('tbody').innerHTML='<tr><td colspan="20" style="text-align:center;padding:2rem;color:#c00">Error al cargar. Recarga la página.</td></tr>';
+  }
+})();
+
+function setTurno(t,btn){
+  currentTurno=t;
+  document.querySelectorAll('.turno-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTablero(); renderCenso();
+}
+
+async function loadAll(){
+  try{
+    const[urgRes,enfRes,tabRes]=await Promise.all([
+      db.from('camas_urgencias').select('*').order('sort_order',{ascending:true}),
+      db.from('censo_enfermeria_urgencias').select('*').eq('fecha',currentFecha),
+      db.from('movimientos_turno').select('*').eq('fecha',currentFecha).in('servicio',AREAS_URG)
+    ]);
+    if(urgRes.error){
+      document.getElementById('tbody').innerHTML=`<tr><td colspan="20" style="text-align:center;padding:2rem;color:#c00">Error: ${urgRes.error.message}</td></tr>`;
+      return;
+    }
+    allRows=urgRes.data||[];
+    enfData={};
+    (enfRes.data||[]).forEach(r=>{enfData[r.cama_id]=r;});
+    tableroData={};
+    (tabRes.data||[]).forEach(r=>{tableroData[`${r.servicio}_${r.turno}`]=r;});
+    renderTablero(); renderCenso();
+  }catch(err){
+    console.error('loadAll error:',err);
+    document.getElementById('tbody').innerHTML='<tr><td colspan="20" style="text-align:center;padding:2rem;color:#c00">Error de conexión.</td></tr>';
+  }
+}
+
+function renderTablero(){
+  const turnos=['M','V','N'];
+  let html=AREAS_URG.map(area=>{
+    const celdas=turnos.map(t=>{
+      const d=tableroData[`${area}_${t}`]||{recibo:0,ingresos:0,egresos:0};
+      return `
+        <td><input class="mov-input" type="number" min="0" value="${d.recibo||0}" id="mov_${area.replace(/\//g,'_')}_${t}_r"/></td>
+        <td><input class="mov-input" type="number" min="0" value="${d.ingresos||0}" id="mov_${area.replace(/\//g,'_')}_${t}_i"/></td>
+        <td><input class="mov-input" type="number" min="0" value="${d.egresos||0}" id="mov_${area.replace(/\//g,'_')}_${t}_e"/></td>`;
+    }).join('');
+    return `<tr><td class="serv-label">${area}</td>${celdas}</tr>`;
+  }).join('');
+  document.getElementById('tablero-tbody').innerHTML=html;
+}
+
+async function guardarTablero(){
+  const turnos=['M','V','N'];
+  const ops=[];
+  AREAS_URG.forEach(area=>{
+    const areaKey=area.replace(/\//g,'_');
+    turnos.forEach(t=>{
+      const r=parseInt(document.getElementById(`mov_${areaKey}_${t}_r`)?.value)||0;
+      const i=parseInt(document.getElementById(`mov_${areaKey}_${t}_i`)?.value)||0;
+      const e=parseInt(document.getElementById(`mov_${areaKey}_${t}_e`)?.value)||0;
+      const existing=tableroData[`${area}_${t}`];
+      if(existing) ops.push(db.from('movimientos_turno').update({recibo:r,ingresos:i,egresos:e,entrego:r+i-e}).eq('id',existing.id));
+      else ops.push(db.from('movimientos_turno').insert({fecha:currentFecha,turno:t,servicio:area,recibo:r,ingresos:i,egresos:e,entrego:r+i-e}));
+    });
+  });
+  await Promise.all(ops);
+  showToast('Tablero guardado','success');
+  await loadAll();
+}
+
+function calcDEH(fi){
+  if(!fi)return null;
+  const hoy=new Date();hoy.setHours(0,0,0,0);
+  const ing=new Date(fi+'T00:00:00');
+  const d=Math.floor((hoy-ing)/86400000);
+  return d>=0?d:0;
+}
+
+// Fix 1A: taCell helper for editable textarea cells
+function taCell(val, rowId, field){
   return `<textarea class="input-cell" rows="1"
     onchange="updateField('${rowId}','${field}',this.value)"
-    onfocus="this.rows=3" onblur="this.rows=1"
-    >${val || ''}</textarea>`;
+    oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
+    >${val||''}</textarea>`;
 }
 
-async function checkAuth(){
-  const user = JSON.parse(localStorage.getItem('hosp_user'));
-  if(!user){ window.location.href='index.html'; return; }
-  document.getElementById('hdr-user').innerText = user.nombre;
-  document.getElementById('fecha-hoy').innerText = new Date().toLocaleDateString('es-MX',{weekday:'long', day:'numeric', month:'long'});
-}
+function renderCenso(){
+  const tbody=document.getElementById('tbody');
+  const q=(document.getElementById('search')?.value||'').toLowerCase();
+  const rows=allRows.filter(r=>!q||(r.nombre_paciente||'').toLowerCase().includes(q));
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="20" style="text-align:center;padding:24px;color:var(--texto-3);">Sin camas</td></tr>';return;}
 
-async function updateField(id, field, val){
-  const {error} = await db.from('camas_urgencias').update({[field]: val}).eq('id', id);
-  if(error) console.error("Error al actualizar:", error);
-}
+  const totalCols=19; // columnas de datos sin cama (que tiene rowspan=2)
+  tbody.innerHTML=rows.map(r=>{
+    const vacio=!r.nombre_paciente;
+    const e=enfData[r.id]||{};
 
-async function renderCenso() {
-  const {data:camas, error} = await db.from('camas_urgencias').select('*').order('id', {ascending:true});
-  if(error) return;
+    if(vacio){
+      return `<tr data-id="${r.id}" data-cama="${r.numero_cama}"
+        ondragover="onDragOverEnf(event)" ondrop="onDropEnf(event)" ondragleave="this.classList.remove('drag-over-enf')"
+        ondblclick="openVincularAdmision('${r.id}')">
+        <td class="col-cama" style="cursor:pointer;"><span class="cama-lbl">${r.numero_cama}</span></td>
+        <td colspan="${totalCols+1}" style="cursor:pointer;">
+          <span class="empty-cell">— disponible — </span>
+          <span style="font-size:10px;color:var(--azul);margin-left:8px;">doble clic para asignar / vincular</span>
+        </td>
+      </tr>`;
+    }
 
-  const tbody = document.getElementById('tbody-censo');
-  tbody.innerHTML = camas.map(c => `
-    <tr>
-      <td class="cama-cell">${c.numero_cama}</td>
-      <td>${taCell(c.nombre_paciente, c.id, 'nombre_paciente')}</td>
-      <td>${taCell(c.sexo, c.id, 'sexo')}</td>
-      <td>${taCell(c.edad, c.id, 'edad')}</td>
-      <td>${taCell(c.fecha_ingreso, c.id, 'fecha_ingreso')}</td>
-      <td>${taCell(c.diagnostico, c.id, 'diagnostico')}</td>
-      <td class="no-print">
-        <button class="btn btn-sm" onclick="vincular('${c.id}')">🔗 Vincular</button>
+    // Fila de datos del paciente para la fila inferior
+    const deh=calcDEH(r.fecha_ingreso);
+    const ing=r.fecha_ingreso?new Date(r.fecha_ingreso+'T00:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+
+    return `
+    <tr data-id="${r.id}" data-cama="${r.numero_cama}" draggable="true"
+      ondragstart="onDragStartEnf(event)" ondragover="onDragOverEnf(event)"
+      ondrop="onDropEnf(event)" ondragleave="this.classList.remove('drag-over-enf')"
+      style="border-bottom:none;">
+      <td class="col-cama" style="vertical-align:middle;border-bottom:none;" rowspan="2">
+        <span class="drag-handle-enf">⠿</span>
+        <span class="cama-lbl">${r.numero_cama}</span>
+      </td>
+      <td style="vertical-align:middle;border-bottom:none;"><span class="${triClass(r.triaje)}">${r.triaje||''}</span></td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.estudios_lab,r.id,'estudios_lab')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.estudios_imagen,r.id,'estudios_imagen')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.hem_cu,r.id,'hem_cu')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.rx,r.id,'rx')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.curaciones,r.id,'curaciones')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.cvc,r.id,'cvc')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.infusiones,r.id,'infusiones')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.ventilador_mecanico,r.id,'ventilador_mecanico')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.cpap,r.id,'cpap')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.oxigeno_litros,r.id,'oxigeno_litros')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.soluciones_parenterales,r.id,'soluciones_parenterales')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.glucosa,r.id,'glucosa')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.diuresis,r.id,'diuresis')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.antibioticos,r.id,'antibioticos')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.inter_consulta,r.id,'inter_consulta')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.cuidados_especiales,r.id,'cuidados_especiales')}</td>
+      <td class="editable" style="border-bottom:none;">${taCell(e.pendientes,r.id,'pendientes')}</td>
+      <td style="vertical-align:middle;border-bottom:none;">
+        <button class="save-row-btn" onclick="saveRow('${r.id}');event.stopPropagation();">💾</button>
       </td>
     </tr>
+    <tr data-id="${r.id}" data-cama="${r.numero_cama}" class="dx-row">
+      <td colspan="${totalCols+1}"
+        style="background:#F8F7F4;padding:4px 10px 6px;font-size:10px;line-height:1.5;white-space:normal;word-break:break-word;">
+        <span style="display:inline-flex;flex-wrap:wrap;gap:10px;align-items:baseline;">
+          <span><b style="color:var(--texto-3);font-size:9px;text-transform:uppercase;">Paciente:</b> <b style="color:var(--texto);">${r.nombre_paciente||''}</b></span>
+          <span><b style="color:var(--texto-3);font-size:9px;">Cédula:</b> <span style="font-family:'IBM Plex Mono',monospace;">${r.cedula||'—'}</span></span>
+          <span><b style="color:var(--texto-3);font-size:9px;">Tipo DH:</b> ${r.tipo_dh||'—'}</span>
+          <span><b style="color:var(--texto-3);font-size:9px;">Sexo:</b> ${r.sexo||'—'}</span>
+          <span><b style="color:var(--texto-3);font-size:9px;">Edad:</b> ${r.edad||'—'} años</span>
+          <span><b style="color:var(--texto-3);font-size:9px;">Ingreso:</b> ${ing}</span>
+          <span><b style="color:var(--texto-3);font-size:9px;">DEH:</b> <span style="font-weight:700;color:${deh>10?'var(--rojo)':'var(--texto)'};">${deh??'—'}</span></span>
+        </span>
+        <div style="margin-top:3px;color:var(--texto-2);">
+          <b style="color:var(--texto-3);font-size:9px;text-transform:uppercase;letter-spacing:.04em;">Dx:</b> ${r.diagnostico||'—'}
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  setTimeout(()=>{
+    document.querySelectorAll('#tbody .input-cell').forEach(ta=>{
+      ta.style.height='auto';ta.style.height=ta.scrollHeight+'px';
+    });
+  },50);
+}
+
+function updateField(camaId,field,value){
+  if(!enfData[camaId]) enfData[camaId]={cama_id:camaId,fecha:currentFecha,turno:currentTurno};
+  enfData[camaId][field]=value;
+}
+
+async function saveRow(camaId){
+  const cama=allRows.find(r=>r.id===camaId);
+  if(!cama)return;
+  const existing=enfData[camaId];
+  const payload={
+    ...existing,
+    cama_id:camaId, numero_cama:cama.numero_cama,
+    fecha:currentFecha, turno:currentTurno,
+    nombre_paciente:cama.nombre_paciente, cedula:cama.cedula,
+    edad:cama.edad, sexo:cama.sexo, servicio:cama.servicio,
+    diagnostico:cama.diagnostico, triaje:cama.triaje,
+  };
+  let error;
+  if(existing?.id){
+    ({error}=await db.from('censo_enfermeria_urgencias').update(payload).eq('id',existing.id));
+  } else {
+    const{data,error:e}=await db.from('censo_enfermeria_urgencias').insert(payload).select().single();
+    error=e;
+    if(data) enfData[camaId]={...enfData[camaId],...data};
+  }
+  if(error) showToast('Error: '+error.message,'error');
+  else showToast(`${cama.numero_cama} guardada`,'success');
+}
+
+async function guardarTodo(){
+  for(const c of allRows.filter(r=>r.nombre_paciente)) await saveRow(c.id);
+  showToast('Todo guardado','success');
+}
+
+// Drag & drop
+function onDragStartEnf(e){dragSrcEnf=e.currentTarget.dataset.id;e.currentTarget.classList.add('dragging-enf');e.dataTransfer.effectAllowed='move';}
+function onDragOverEnf(e){e.preventDefault();e.currentTarget.classList.add('drag-over-enf');}
+async function onDropEnf(e){
+  e.preventDefault();e.currentTarget.classList.remove('drag-over-enf');
+  const destId=e.currentTarget.dataset.id, destCama=e.currentTarget.dataset.cama;
+  if(!dragSrcEnf||dragSrcEnf===destId)return;
+  const src=allRows.find(r=>r.id===dragSrcEnf), dest=allRows.find(r=>r.id===destId);
+  if(!src)return;
+  const campos=['nombre_paciente','sexo','servicio','manejo_conjunto','cedula','tipo_dh','edad','fecha_ingreso','diagnostico','pendientes','triaje','ventilador','aislado','caso_riesgo'];
+  const bools=['ventilador','aislado','caso_riesgo'];
+  const srcData={},destData={};
+  campos.forEach(c=>{srcData[c]=dest?dest[c]:null;destData[c]=src[c];});
+  bools.forEach(c=>{if(!srcData[c])srcData[c]=false;if(!destData[c])destData[c]=false;});
+  await db.from('camas_urgencias').update(srcData).eq('id',dragSrcEnf);
+  await db.from('camas_urgencias').update(destData).eq('id',destId);
+  showToast(`Movido a ${destCama}`,'success');
+  dragSrcEnf=null; await loadAll();
+}
+
+// ── VINCULAR DESDE ADMISIÓN URGENCIAS ──
+let admisionPacientes=[], assigningCamaId=null;
+
+async function openVincularAdmision(camaId){
+  assigningCamaId=camaId;
+  document.getElementById('va-search').value='';
+  document.getElementById('va-overlay').classList.add('open');
+  document.getElementById('va-grid').innerHTML='<div class="loading"><div class="spinner"></div> Cargando…</div>';
+  const{data,error}=await db.from('admision_urgencias')
+    .select('id,nombre_paciente,rfc_cedula,tipo_dh,edad,sintomas,estado,hora_llegada,area')
+    .neq('estado','Se retiró')
+    .order('numero',{ascending:true});
+  if(error||!data){document.getElementById('va-grid').innerHTML='<p style="color:#c00;font-size:12px;">Error al cargar admisión</p>';return;}
+  admisionPacientes=data;
+  renderVincularAdmision(admisionPacientes);
+}
+
+function filterVA(){
+  const q=document.getElementById('va-search').value.toLowerCase();
+  renderVincularAdmision(admisionPacientes.filter(p=>(p.nombre_paciente||'').toLowerCase().includes(q)));
+}
+
+function renderVincularAdmision(list){
+  const grid=document.getElementById('va-grid');
+  if(!list.length){grid.innerHTML='<p style="font-size:12px;color:var(--texto-3);padding:10px;">Sin pacientes en admisión</p>';return;}
+  grid.innerHTML=list.map(p=>`
+    <div class="vincular-item" onclick="seleccionarDeAdmision('${(p.nombre_paciente||'').replace(/'/g,"\\'")}','${p.rfc_cedula||''}','${p.tipo_dh||''}',${p.edad||0},'${(p.sintomas||'').replace(/'/g,"\\'").replace(/\n/g,' ')}')">
+      <div class="vincular-nombre">${p.nombre_paciente||''}</div>
+      <div class="vincular-datos">
+        Cédula: ${p.rfc_cedula||'—'} · Tipo: ${p.tipo_dh||'—'} · Edad: ${p.edad||'—'} · ${p.hora_llegada||''} ·
+        <span style="color:${p.estado==='Sala de espera'?'var(--naranja)':'var(--verde)'};">${p.estado||''}</span>
+        · ${p.area||''}
+      </div>
+      ${p.sintomas?`<div style="font-size:10px;color:var(--texto-3);margin-top:2px;">${p.sintomas.substring(0,60)}…</div>`:''}
+    </div>
   `).join('');
 }
 
-// CORRECCIÓN: Listener seguro para el overlay
-document.addEventListener('DOMContentLoaded', () => {
-  checkAuth();
-  renderCenso();
+async function seleccionarDeAdmision(nombre,cedula,tipo,edad,sintomas){
+  closeVAOverlay();
+  if(!assigningCamaId)return;
+  const cama=allRows.find(r=>r.id===assigningCamaId);
+  if(!cama)return;
 
-  const overlay = document.getElementById('va-overlay');
-  if (overlay) {
-    overlay.addEventListener('click', e => {
-      if (e.target === overlay) closeVAOverlay();
-    });
-  }
+  // Asignar paciente a la cama de urgencias desde admisión
+  const payload={
+    nombre_paciente:nombre,
+    cedula:cedula||null,
+    tipo_dh:tipo||null,
+    edad:parseInt(edad)||null,
+    diagnostico:sintomas||null,
+    fecha_ingreso:new Date().toISOString().split('T')[0],
+    triaje:'Verde',
+    servicio:'Urgen',
+    ventilador:false, aislado:false, caso_riesgo:false,
+  };
+  const{error}=await db.from('camas_urgencias').update(payload).eq('id',assigningCamaId);
+  if(error){showToast('Error: '+error.message,'error');return;}
+  showToast(`${nombre} asignado a ${cama.numero_cama}`,'success');
+  assigningCamaId=null;
+  await loadAll();
+}
+
+function closeVAOverlay(){document.getElementById('va-overlay').classList.remove('open');}
+
+// Modal legacy — ya no se usa, pero mantener por compatibilidad
+function openModalUrg(id){ /* edición directa en celdas */ }
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeVAOverlay();});
+document.addEventListener('DOMContentLoaded',()=>{
+  const vaOverlay=document.getElementById('va-overlay');
+  if(vaOverlay) vaOverlay.addEventListener('click',e=>{
+    if(e.target===vaOverlay)closeVAOverlay();
+  });
 });
 
-function logout(){ localStorage.clear(); window.location.href='index.html'; }
-function printCenso(){ window.print(); }
+// ── HACER CORTE ──
+function hacerCorte(){
+  const turnoLabel={'M':'Matutino','V':'Vespertino','N':'Nocturno'}[currentTurno]||currentTurno;
+  const fecha=document.getElementById('fecha-censo').value||currentFecha;
+  const ocupadas=allRows.filter(r=>r.nombre_paciente);
+  const filas=ocupadas.map(r=>{
+    const e=enfData[r.id]||{};
+    return `<tr>
+      <td style="font-weight:700;">${r.numero_cama}</td>
+      <td><span style="font-size:9px;padding:1px 5px;border-radius:3px;background:${r.triaje==='Rojo'?'#FCEBEB':r.triaje==='Naranja'?'#FAEEDA':'#EAF3DE'};color:${r.triaje==='Rojo'?'#A32D2D':r.triaje==='Naranja'?'#854F0B':'#3B6D11'};">${r.triaje||''}</span></td>
+      <td style="font-weight:600;">${r.nombre_paciente||''}</td>
+      <td style="font-size:10px;">${r.cedula||''}</td>
+      <td style="text-align:center;">${r.edad||''}</td>
+      <td style="font-size:10px;color:#555;">${r.diagnostico||''}</td>
+      <td style="font-size:10px;">${e.infusiones||''}</td>
+      <td style="font-size:10px;">${e.antibioticos||''}</td>
+      <td style="font-size:10px;">${e.cuidados_especiales||''}</td>
+      <td style="font-size:10px;">${e.pendientes||''}</td>
+    </tr>`;
+  }).join('');
+
+  const win=window.open('','_blank','width=1100,height=800');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+  <title>Corte de Enfermería — Urgencias</title>
+  <style>
+    body{font-family:Arial,sans-serif;font-size:11px;margin:16px;color:#111;}
+    h2{font-size:14px;margin:0 0 2px;} h3{font-size:12px;margin:0 0 10px;color:#555;}
+    .encab{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;border-bottom:2px solid #E24B4A;padding-bottom:8px;}
+    .stats{display:flex;gap:24px;margin-bottom:12px;}
+    .stat{background:#F1EFE8;padding:6px 14px;border-radius:6px;text-align:center;}
+    .stat .n{font-size:22px;font-weight:700;color:#E24B4A;} .stat .l{font-size:10px;color:#555;}
+    table{width:100%;border-collapse:collapse;font-size:10px;}
+    th{background:#E24B4A;color:#fff;padding:5px 6px;text-align:left;font-size:9px;}
+    td{padding:4px 6px;border-bottom:1px solid #E5E5E0;vertical-align:top;}
+    tr:nth-child(even) td{background:#F8F7F4;}
+    @media print{body{margin:8px;}}
+  </style></head><body>
+  <div class="encab">
+    <div>
+      <h2>Clínica Hospital Dr. Miguel Trejo Ochoa</h2>
+      <h3>Corte de Enfermería — Urgencias</h3>
+    </div>
+    <div style="text-align:right;font-size:11px;">
+      <div><b>Fecha:</b> ${fecha}</div>
+      <div><b>Turno:</b> ${turnoLabel}</div>
+      <div><b>Generado:</b> ${new Date().toLocaleTimeString('es-MX')}</div>
+    </div>
+  </div>
+  <div class="stats">
+    <div class="stat"><div class="n">${allRows.length}</div><div class="l">Total camas</div></div>
+    <div class="stat"><div class="n" style="color:#854F0B;">${ocupadas.length}</div><div class="l">Ocupadas</div></div>
+    <div class="stat"><div class="n" style="color:#3B6D11;">${allRows.length-ocupadas.length}</div><div class="l">Disponibles</div></div>
+    <div class="stat"><div class="n" style="color:#A32D2D;">${allRows.filter(r=>r.triaje==='Rojo').length}</div><div class="l">Triaje Rojo</div></div>
+  </div>
+  <table>
+    <thead><tr>
+      <th>Cama</th><th>Triaje</th><th>Nombre</th><th>Cédula</th>
+      <th>Edad</th><th>Diagnóstico</th>
+      <th>VVP/Infusiones</th><th>Antibióticos</th>
+      <th>Cuidados Especiales</th><th>Pendientes</th>
+    </tr></thead>
+    <tbody>${filas}</tbody>
+  </table>
+  <div style="margin-top:30px;display:flex;gap:60px;">
+    <div style="text-align:center;flex:1;"><div style="border-top:1px solid #000;padding-top:4px;font-size:10px;">Firma Jefa de Enfermería</div></div>
+    <div style="text-align:center;flex:1;"><div style="border-top:1px solid #000;padding-top:4px;font-size:10px;">Firma Enfermera Responsable</div></div>
+  </div>
+  <script>window.onload=()=>window.print();<\/script>
+  </body></html>`);
+  win.document.close();
+}
 </script>
 
+<!-- MODAL VINCULAR ADMISIÓN -->
 <div class="modal-overlay" id="va-overlay" style="z-index:600;">
   <div class="modal" style="max-width:500px;">
-    <div class="modal-title">🔗 Vincular desde Admisión</div>
-    <p style="font-size:12px; color:var(--texto-2);">Busca el paciente para cargar sus datos automáticamente.</p>
-    <button class="btn btn-outline" onclick="closeVAOverlay()">Cerrar</button>
+    <div class="modal-title">🔗 Vincular desde Admisión Urgencias</div>
+    <div style="font-size:12px;color:var(--texto-2);margin-bottom:8px;">Selecciona el paciente registrado en admisión:</div>
+    <input class="search-input" id="va-search" type="text" placeholder="Buscar nombre…" oninput="filterVA()" style="width:100%;margin-bottom:10px;"/>
+    <div id="va-grid" style="max-height:320px;overflow-y:auto;"></div>
+    <div style="margin-top:12px;display:flex;gap:8px;">
+      <button class="btn btn-sm" onclick="closeVAOverlay()">Cancelar</button>
+      <button class="btn btn-sm" style="margin-left:auto;" onclick="seleccionarDeAdmision('','','',0,'')">Asignar sin vincular (captura manual)</button>
+    </div>
   </div>
 </div>
+
 </body>
 </html>
