@@ -150,7 +150,22 @@
       <div class="stat-card"><div class="stat-label">Casos riesgo</div><div class="stat-value danger" id="st-riesgo">—</div></div>
     </div>
 
-    <div class="table-container">
+        <!-- SELECTOR DE TURNO -->
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;flex-wrap:wrap;">
+      <span style="font-size:11px;font-weight:600;color:var(--texto-2);text-transform:uppercase;letter-spacing:.06em;">Turno:</span>
+      <select id="turno-selector" onchange="setTurnoActivo(this.value)"
+        style="padding:5px 12px;border:1px solid var(--gris-borde);border-radius:20px;font-size:12px;font-weight:500;background:var(--surface);color:var(--texto);cursor:pointer;">
+        <option value="">— Sin especificar —</option>
+        <option value="Matutino">Matutino</option>
+        <option value="Vespertino">Vespertino</option>
+        <option value="Nocturno LMV">Nocturno Lun-Mié-Vie</option>
+        <option value="Nocturno MJV">Nocturno Mar-Jue-Vie</option>
+        <option value="Jornada Diurna">Jornada Diurna</option>
+        <option value="Jornada Nocturna">Jornada Nocturna</option>
+      </select>
+      <span id="turno-badge" style="display:none;font-size:11px;padding:3px 10px;border-radius:12px;background:var(--azul-lt);color:var(--azul);font-weight:600;"></span>
+    </div>
+<div class="table-container">
       <div class="filter-bar">
         <span>Filtrar:</span>
         <button class="filter-btn fb-all active" onclick="setFilter('all',this)">Todos</button>
@@ -716,6 +731,21 @@ async function confirmarAlta(){
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeAltaModal();}});
 document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
 document.getElementById('alta-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('alta-overlay'))closeAltaModal();});
+
+function setTurnoActivo(val){
+  const badge=document.getElementById('turno-badge');
+  if(val){badge.textContent=val;badge.style.display='inline';}
+  else{badge.style.display='none';}
+  // Store in sessionStorage so it persists on page reload
+  sessionStorage.setItem('turno_activo', val);
+}
+// Restore turno on load
+(function(){
+  const t=sessionStorage.getItem('turno_activo')||'';
+  const sel=document.getElementById('turno-selector');
+  if(sel&&t){sel.value=t;setTurnoActivo(t);}
+})();
+
 </script>
 </body>
 </html>

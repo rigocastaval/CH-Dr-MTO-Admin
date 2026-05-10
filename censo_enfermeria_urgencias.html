@@ -140,10 +140,13 @@
   <main class="main">
     <div class="turno-bar">
       <div style="font-size:13px;font-weight:600;color:var(--texto);">Censo de Enfermería — Urgencias</div>
-      <div style="display:flex;gap:6px;margin-left:8px;">
-        <button class="turno-btn active" id="tb-M" onclick="setTurno('M',this)">Matutino (M)</button>
-        <button class="turno-btn" id="tb-V" onclick="setTurno('V',this)">Vespertino (V)</button>
-        <button class="turno-btn" id="tb-N" onclick="setTurno('N',this)">Nocturno (N)</button>
+      <div style="display:flex;gap:6px;margin-left:8px;flex-wrap:wrap;">
+        <button class="turno-btn active" id="tb-M" onclick="setTurno('M',this)">Matutino</button>
+        <button class="turno-btn" id="tb-V" onclick="setTurno('V',this)">Vespertino</button>
+        <button class="turno-btn" id="tb-NLMV" onclick="setTurno('NLMV',this)">Noct. LMV</button>
+        <button class="turno-btn" id="tb-NMJV" onclick="setTurno('NMJV',this)">Noct. MJV</button>
+        <button class="turno-btn" id="tb-JD" onclick="setTurno('JD',this)">J. Diurna</button>
+        <button class="turno-btn" id="tb-JN" onclick="setTurno('JN',this)">J. Nocturna</button>
       </div>
       <input type="date" id="fecha-censo" style="padding:6px 10px;border:1px solid var(--gris-borde);border-radius:var(--radio);font-size:12px;background:var(--bg);"/>
       <button class="btn btn-sm btn-primary" onclick="guardarTodo()">💾 Guardar todo</button>
@@ -407,7 +410,8 @@ function renderCenso(){
         <button class="save-row-btn" onclick="saveRow('${r.id}');event.stopPropagation();">💾</button>
       </td>
     </tr>
-    <tr data-id="${r.id}" data-cama="${r.numero_cama}" class="dx-row">
+    <tr data-id="${r.id}" data-cama="${r.numero_cama}" class="dx-row"
+      ondblclick="openEditModal('${r.id}')" style="cursor:pointer;" title="Doble clic para editar">
       <td colspan="${totalCols+1}"
         style="background:#F8F7F4;padding:4px 10px 6px;font-size:10px;line-height:1.5;white-space:normal;word-break:break-word;">
         <span style="display:inline-flex;flex-wrap:wrap;gap:10px;align-items:baseline;">
@@ -555,15 +559,227 @@ function closeVAOverlay(){document.getElementById('va-overlay').classList.remove
 // Modal legacy — ya no se usa, pero mantener por compatibilidad
 function openModalUrg(id){ /* edición directa en celdas */ }
 
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeVAOverlay();});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeVAOverlay();closeEditModalUrg();}});
 document.addEventListener('DOMContentLoaded',()=>{
   const vaOverlay=document.getElementById('va-overlay');
   if(vaOverlay) vaOverlay.addEventListener('click',e=>{
     if(e.target===vaOverlay)closeVAOverlay();
   });
+  const editOverlay=document.getElementById('edit-urg-overlay');
+  if(editOverlay) editOverlay.addEventListener('click',e=>{
+    if(e.target===editOverlay)closeEditModalUrg();
+  });
 });
 
-// ── HACER CORTE ──
+// ── MODAL EDICIÓN PACIENTE ENFERMERÍA URGENCIAS ──
+let editingUrgId=null;
+
+function openEditModal(camaId){
+  const cama=allRows.find(r=>r.id===camaId);
+  if(!cama||!cama.nombre_paciente)return;
+  const e=enfData[camaId]||{};
+  editingUrgId=camaId;
+
+  document.getElementById('eu-title').textContent=`${cama.numero_cama} — ${cama.nombre_paciente}`;
+  document.getElementById('eu-nombre').value=cama.nombre_paciente||'';
+  document.getElementById('eu-cedula').value=cama.cedula||'';
+  document.getElementById('eu-tipo').value=cama.tipo_dh||'';
+  document.getElementById('eu-edad').value=cama.edad||'';
+  document.getElementById('eu-sexo').value=cama.sexo||'';
+  document.getElementById('eu-ingreso').value=cama.fecha_ingreso||'';
+  document.getElementById('eu-dx').value=cama.diagnostico||'';
+  document.getElementById('eu-triaje').value=cama.triaje||'Verde';
+  document.getElementById('eu-lab').value=e.estudios_lab||'';
+  document.getElementById('eu-img').value=e.estudios_imagen||'';
+  document.getElementById('eu-hcu').value=e.hem_cu||'';
+  document.getElementById('eu-rx').value=e.rx||'';
+  document.getElementById('eu-cur').value=e.curaciones||'';
+  document.getElementById('eu-cvc').value=e.cvc||'';
+  document.getElementById('eu-vvp').value=e.infusiones||'';
+  document.getElementById('eu-vm').value=e.ventilador_mecanico||'';
+  document.getElementById('eu-cpap').value=e.cpap||'';
+  document.getElementById('eu-o2').value=e.oxigeno_litros||'';
+  document.getElementById('eu-sol').value=e.soluciones_parenterales||'';
+  document.getElementById('eu-gluc').value=e.glucosa||'';
+  document.getElementById('eu-diu').value=e.diuresis||'';
+  document.getElementById('eu-abx').value=e.antibioticos||'';
+  document.getElementById('eu-ic').value=e.inter_consulta||'';
+  document.getElementById('eu-ce').value=e.cuidados_especiales||'';
+  document.getElementById('eu-pend').value=e.pendientes||'';
+  document.getElementById('edit-urg-overlay').classList.add('open');
+}
+
+function closeEditModalUrg(){document.getElementById('edit-urg-overlay').classList.remove('open');editingUrgId=null;}
+
+async function saveEditModalUrg(){
+  if(!editingUrgId)return;
+  const cama=allRows.find(r=>r.id===editingUrgId);
+  if(!cama)return;
+
+  // Update cama fields
+  const camaPayload={
+    nombre_paciente: document.getElementById('eu-nombre').value.trim()||null,
+    cedula:          document.getElementById('eu-cedula').value.trim()||null,
+    tipo_dh:         document.getElementById('eu-tipo').value||null,
+    edad:            parseInt(document.getElementById('eu-edad').value)||null,
+    sexo:            document.getElementById('eu-sexo').value||null,
+    fecha_ingreso:   document.getElementById('eu-ingreso').value||null,
+    diagnostico:     document.getElementById('eu-dx').value.trim()||null,
+    triaje:          document.getElementById('eu-triaje').value||null,
+  };
+  await db.from('camas_urgencias').update(camaPayload).eq('id',editingUrgId);
+
+  // Update enfermería fields
+  const enfPayload={
+    estudios_lab:          document.getElementById('eu-lab').value||null,
+    estudios_imagen:       document.getElementById('eu-img').value||null,
+    hem_cu:                document.getElementById('eu-hcu').value||null,
+    rx:                    document.getElementById('eu-rx').value||null,
+    curaciones:            document.getElementById('eu-cur').value||null,
+    cvc:                   document.getElementById('eu-cvc').value||null,
+    infusiones:            document.getElementById('eu-vvp').value||null,
+    ventilador_mecanico:   document.getElementById('eu-vm').value||null,
+    cpap:                  document.getElementById('eu-cpap').value||null,
+    oxigeno_litros:        document.getElementById('eu-o2').value||null,
+    soluciones_parenterales: document.getElementById('eu-sol').value||null,
+    glucosa:               document.getElementById('eu-gluc').value||null,
+    diuresis:              document.getElementById('eu-diu').value||null,
+    antibioticos:          document.getElementById('eu-abx').value||null,
+    inter_consulta:        document.getElementById('eu-ic').value||null,
+    cuidados_especiales:   document.getElementById('eu-ce').value||null,
+    pendientes:            document.getElementById('eu-pend').value||null,
+  };
+  await saveRow(editingUrgId);
+  // Merge enfPayload into local enfData
+  if(!enfData[editingUrgId]) enfData[editingUrgId]={};
+  Object.assign(enfData[editingUrgId], enfPayload);
+  const existing=enfData[editingUrgId];
+  const fullPayload={...existing,...enfPayload,
+    cama_id:editingUrgId, numero_cama:cama.numero_cama,
+    fecha:currentFecha, turno:currentTurno,
+    nombre_paciente:camaPayload.nombre_paciente||cama.nombre_paciente,
+    cedula:camaPayload.cedula||cama.cedula,
+    edad:camaPayload.edad||cama.edad,
+    sexo:camaPayload.sexo||cama.sexo,
+    diagnostico:camaPayload.diagnostico||cama.diagnostico,
+    triaje:camaPayload.triaje||cama.triaje,
+  };
+  let error;
+  if(existing?.id){
+    ({error}=await db.from('censo_enfermeria_urgencias').update(fullPayload).eq('id',existing.id));
+  } else {
+    const{data,error:e}=await db.from('censo_enfermeria_urgencias').insert(fullPayload).select().single();
+    error=e; if(data) enfData[editingUrgId]={...enfData[editingUrgId],...data};
+  }
+  if(error){showToast('Error: '+error.message,'error');return;}
+  // Also update camas_urgencias
+  await db.from('camas_urgencias').update(camaPayload).eq('id',editingUrgId);
+  showToast('Guardado','success');
+  closeEditModalUrg();
+  await loadAll();
+}
+
+async function darAltaUrg(camaId){
+  const cama=allRows.find(r=>r.id===camaId);
+  if(!cama)return;
+  const motivo=prompt(`Alta — ${cama.nombre_paciente}\n\n1. Mejoría\n2. Defunción\n3. Traslado a hospital\n\nEscribe 1, 2 o 3:`);
+  if(!motivo)return;
+  const m={'1':'Mejoría','2':'Defunción','3':'Traslado a hospital'};
+  const motivoFinal=m[motivo.trim()]||motivo.trim();
+  await db.from('egresos_urgencias').insert({
+    numero_cama:cama.numero_cama, nombre_paciente:cama.nombre_paciente,
+    sexo:cama.sexo, servicio:cama.servicio, cedula:cama.cedula,
+    tipo_dh:cama.tipo_dh, edad:cama.edad, fecha_ingreso:cama.fecha_ingreso,
+    diagnostico:cama.diagnostico, motivo_alta:motivoFinal,
+    fecha_alta:new Date().toISOString().split('T')[0],
+  });
+  const limpio={nombre_paciente:null,sexo:null,servicio:null,cedula:null,
+    tipo_dh:null,edad:null,fecha_ingreso:null,diagnostico:null,
+    pendientes:null,triaje:null,ventilador:false,aislado:false,caso_riesgo:false};
+  await db.from('camas_urgencias').update(limpio).eq('id',camaId);
+  showToast(`Alta registrada: ${motivoFinal}`,'success');
+  closeEditModalUrg();
+  await loadAll();
+}
+</script>
+
+<!-- MODAL EDICIÓN ENFERMERÍA URGENCIAS -->
+<div class="modal-overlay" id="edit-urg-overlay">
+  <div class="modal" style="max-width:620px;max-height:88vh;overflow-y:auto;">
+    <div class="modal-title" id="eu-title">Editar paciente</div>
+
+    <!-- Datos del paciente -->
+    <div style="background:var(--bg);border-radius:var(--radio);padding:10px 12px;margin-bottom:12px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--texto-3);margin-bottom:8px;">Datos del paciente</div>
+      <div class="field-row">
+        <div class="field"><label>Nombre</label><input type="text" id="eu-nombre"/></div>
+        <div class="field" style="flex:0 0 110px;"><label>Cédula</label><input type="text" id="eu-cedula"/></div>
+      </div>
+      <div class="field-row">
+        <div class="field" style="flex:0 0 80px;"><label>Tipo DH</label>
+          <select id="eu-tipo">
+            <option value="">—</option>
+            <option>10</option><option>20</option><option>30</option><option>31</option>
+            <option>40</option><option>41</option><option>50</option><option>51</option>
+            <option>60</option><option>61</option><option>70</option><option>71</option>
+            <option>80</option><option>81</option><option>90</option><option>91</option>
+          </select>
+        </div>
+        <div class="field" style="flex:0 0 70px;"><label>Edad</label><input type="number" id="eu-edad" min="0" max="120"/></div>
+        <div class="field" style="flex:0 0 70px;"><label>Sexo</label>
+          <select id="eu-sexo"><option value="">—</option><option value="M">M</option><option value="F">F</option></select>
+        </div>
+        <div class="field" style="flex:0 0 130px;"><label>Fecha ingreso</label><input type="date" id="eu-ingreso"/></div>
+        <div class="field" style="flex:0 0 110px;"><label>Triaje</label>
+          <select id="eu-triaje">
+            <option value="Verde">Verde</option><option value="Amarillo">Amarillo</option>
+            <option value="Naranja">Naranja</option><option value="Rojo">Rojo</option>
+          </select>
+        </div>
+      </div>
+      <div class="field"><label>Diagnóstico</label><textarea id="eu-dx" style="min-height:48px;"></textarea></div>
+    </div>
+
+    <!-- Procedimientos -->
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--texto-3);margin-bottom:6px;">Procedimientos / Notas de enfermería</div>
+    <div class="field-row">
+      <div class="field"><label>Lab</label><input type="text" id="eu-lab"/></div>
+      <div class="field"><label>Imagen</label><input type="text" id="eu-img"/></div>
+      <div class="field"><label>HemoCultivo</label><input type="text" id="eu-hcu"/></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>RX</label><input type="text" id="eu-rx"/></div>
+      <div class="field"><label>Curaciones</label><input type="text" id="eu-cur"/></div>
+      <div class="field"><label>CVC</label><input type="text" id="eu-cvc"/></div>
+    </div>
+    <div class="field"><label>VVP / Infusiones</label><input type="text" id="eu-vvp"/></div>
+    <div class="field-row">
+      <div class="field"><label>Ventilador</label><input type="text" id="eu-vm"/></div>
+      <div class="field"><label>CPAP</label><input type="text" id="eu-cpap"/></div>
+      <div class="field"><label>O₂</label><input type="text" id="eu-o2"/></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><label>Sol. Parenterales</label><input type="text" id="eu-sol"/></div>
+      <div class="field"><label>Glucosa</label><input type="text" id="eu-gluc"/></div>
+      <div class="field"><label>Diuresis</label><input type="text" id="eu-diu"/></div>
+    </div>
+    <div class="field"><label>Antibióticos</label><textarea id="eu-abx" style="min-height:44px;"></textarea></div>
+    <div class="field-row">
+      <div class="field"><label>Interconsulta</label><input type="text" id="eu-ic"/></div>
+    </div>
+    <div class="field"><label>Cuidados Especiales</label><textarea id="eu-ce" style="min-height:44px;"></textarea></div>
+    <div class="field"><label>Pendientes</label><textarea id="eu-pend" style="min-height:44px;"></textarea></div>
+
+    <div class="modal-footer">
+      <button class="btn btn-sm btn-danger" onclick="darAltaUrg(editingUrgId)" style="margin-right:auto;">🏥 Dar alta</button>
+      <button class="btn btn-sm" onclick="closeEditModalUrg()">Cancelar</button>
+      <button class="btn btn-sm btn-primary" onclick="saveEditModalUrg()">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL VINCULAR ADMISIÓN -->
+<div class="modal-overlay" id="va-overlay" style="z-index:600;">
 function hacerCorte(){
   const turnoLabel={'M':'Matutino','V':'Vespertino','N':'Nocturno'}[currentTurno]||currentTurno;
   const fecha=document.getElementById('fecha-censo').value||currentFecha;

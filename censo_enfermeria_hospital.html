@@ -180,9 +180,10 @@
       <div style="display:flex;gap:6px;margin-left:8px;flex-wrap:wrap;">
         <button class="turno-btn active" id="tb-M" onclick="setTurno('M',this)">Matutino</button>
         <button class="turno-btn" id="tb-V" onclick="setTurno('V',this)">Vespertino</button>
-        <button class="turno-btn" id="tb-N" onclick="setTurno('N',this)">Nocturno</button>
-        <button class="turno-btn" id="tb-JD" onclick="setTurno('JD',this)">Jornada Diurna</button>
-        <button class="turno-btn" id="tb-JN" onclick="setTurno('JN',this)">Jornada Nocturna</button>
+        <button class="turno-btn" id="tb-NLMV" onclick="setTurno('NLMV',this)">Noct. LMV</button>
+        <button class="turno-btn" id="tb-NMJV" onclick="setTurno('NMJV',this)">Noct. MJV</button>
+        <button class="turno-btn" id="tb-JD" onclick="setTurno('JD',this)">J. Diurna</button>
+        <button class="turno-btn" id="tb-JN" onclick="setTurno('JN',this)">J. Nocturna</button>
       </div>
       <input type="date" id="fecha-censo" style="padding:6px 10px;border:1px solid var(--gris-borde);border-radius:var(--radio);font-size:12px;background:var(--bg);"/>
       <button class="btn btn-sm btn-primary" onclick="guardarTodo()">💾 Guardar todo</button>
@@ -724,7 +725,7 @@ async function ejecutarCorte(){
   const turnoEntrega=document.getElementById('corte-turno').value;
   if(!turnoEntrega){showToast('Selecciona el turno que se entrega','error');return;}
   const fecha=document.getElementById('fecha-censo').value||currentFecha;
-  const turnoLabel={'M':'Matutino','V':'Vespertino','N':'Nocturno','JD':'Jornada Diurna','JN':'Jornada Nocturna'};
+  const turnoLabel={'M':'Matutino','V':'Vespertino','NLMV':'Nocturno LMV','NMJV':'Nocturno MJV','JD':'Jornada Diurna','JN':'Jornada Nocturna'};
 
   // Snapshot actual de camas
   const snapshotActual=allRows.map(r=>({
