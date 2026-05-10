@@ -414,10 +414,11 @@ function renderCenso(){
 
     if(vacio){
       return `<tr data-id="${r.id}" data-cama="${r.numero_cama}"
-        ondragover="onDragOverEnf(event)" ondrop="onDropEnf(event)" ondragleave="this.classList.remove('drag-over-enf')">
+        ondragover="onDragOverEnf(event)" ondrop="onDropEnf(event)" ondragleave="this.classList.remove('drag-over-enf')"
+        ondblclick="openModalById('${r.id}')" style="cursor:pointer;">
         <td class="col-cama" style="vertical-align:middle;"><span class="cama-lbl">${r.numero_cama}</span></td>
-        <td colspan="${totalCols}" style="color:var(--texto-3);font-style:italic;font-size:11px;">— disponible —</td>
-        <td><button class="btn btn-sm" onclick="openModalById('${r.id}')">Asignar</button></td>
+        <td colspan="${totalCols}" style="color:var(--texto-3);font-style:italic;font-size:11px;">— disponible — <span style="font-size:10px;color:var(--azul);">doble clic para asignar</span></td>
+        <td><button class="btn btn-sm" onclick="event.stopPropagation();openModalById('${r.id}')">Asignar</button></td>
       </tr>`;
     }
 
