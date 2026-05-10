@@ -24,7 +24,54 @@
     /* Columna cama fija */
     td.col-cama,th.col-cama{position:sticky;left:0;z-index:2;background:var(--surface);box-shadow:2px 0 5px rgba(0,0,0,.07);min-width:66px;white-space:nowrap;}
     thead th.col-cama{background:var(--bg);z-index:3;}
-    .th-group-label{background:#F1EFE8;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--texto-2);text-align:center;padding:3px 4px;border-bottom:1px solid var(--gris-borde);}
+    .th-group-label{
+      background:#5A1229;
+      color:#ffffff !important;
+      font-size:9px;font-weight:700;text-transform:uppercase;
+      letter-spacing:.06em;text-align:center;padding:4px 4px;
+      border-bottom:1px solid #3E0B1C;
+    }
+
+    /* Headers de segunda fila — texto oscuro legible */
+    .tbl-wrap table thead tr:last-child th {
+      color: #1A1410 !important;
+      font-weight: 700 !important;
+      font-size: 10px !important;
+      background: #EDE8E4 !important;
+    }
+    /* Primera fila (grupos) con color institucional */
+    .tbl-wrap table thead tr:first-child th {
+      color: #ffffff !important;
+      background: #5A1229 !important;
+    }
+
+    /* ── ESTILOS DE IMPRESIÓN ── */
+    @media print {
+      .header, .sidebar, .turno-bar, .tablero, .table-toolbar,
+      .save-row-btn, .drag-handle-enf { display: none !important; }
+      .app-layout { display: block !important; }
+      .main { padding: 0 !important; }
+      .tbl-wrap { max-height: none !important; overflow: visible !important; }
+      body { font-size: 8px !important; }
+      #censo-table { width: 100% !important; border-collapse: collapse !important; }
+      #censo-table th, #censo-table td {
+        border: 1.5px solid #333 !important;
+        padding: 3px 4px !important;
+        color: #000 !important;
+      }
+      #censo-table thead th {
+        background: #333 !important;
+        color: #fff !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      #censo-table tr.dx-row td {
+        background: #f0f0f0 !important;
+        border-bottom: 2px solid #333 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+    }
 
     /* Inputs */
     .input-cell{width:100%;border:none;background:transparent;font-size:10px;color:var(--texto);font-family:var(--font-sans);padding:0;outline:none;resize:none;overflow:hidden;min-height:16px;line-height:1.4;}
@@ -346,10 +393,12 @@ function calcDEH(fi){
 
 // Fix 1A: taCell helper for editable textarea cells
 function taCell(val, rowId, field){
+  // Filter out boolean false — show empty string instead of "false"
+  const display = (val === false || val === null || val === undefined) ? '' : String(val);
   return `<textarea class="input-cell" rows="1"
     onchange="updateField('${rowId}','${field}',this.value)"
     oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
-    >${val||''}</textarea>`;
+    >${display}</textarea>`;
 }
 
 function renderCenso(){
