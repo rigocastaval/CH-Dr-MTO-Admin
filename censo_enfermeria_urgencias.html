@@ -608,16 +608,14 @@ function closeVAOverlay(){document.getElementById('va-overlay').classList.remove
 // Modal legacy — ya no se usa, pero mantener por compatibilidad
 function openModalUrg(id){ /* edición directa en celdas */ }
 
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeVAOverlay();closeEditModalUrg();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeVAOverlay();closeEditModalUrg();closeEnfAltaModal();}});
 document.addEventListener('DOMContentLoaded',()=>{
   const vaOverlay=document.getElementById('va-overlay');
-  if(vaOverlay) vaOverlay.addEventListener('click',e=>{
-    if(e.target===vaOverlay)closeVAOverlay();
-  });
+  if(vaOverlay) vaOverlay.addEventListener('click',e=>{if(e.target===vaOverlay)closeVAOverlay();});
   const editOverlay=document.getElementById('edit-urg-overlay');
-  if(editOverlay) editOverlay.addEventListener('click',e=>{
-    if(e.target===editOverlay)closeEditModalUrg();
-  });
+  if(editOverlay) editOverlay.addEventListener('click',e=>{if(e.target===editOverlay)closeEditModalUrg();});
+  const altaOverlay=document.getElementById('enf-alta-overlay');
+  if(altaOverlay) altaOverlay.addEventListener('click',e=>{if(e.target===altaOverlay)closeEnfAltaModal();});
 });
 
 // ── MODAL EDICIÓN PACIENTE ENFERMERÍA URGENCIAS ──
@@ -729,25 +727,116 @@ async function saveEditModalUrg(){
 }
 
 async function darAltaUrg(camaId){
-  const cama=allRows.find(r=>r.id===camaId);
-  if(!cama)return;
-  const motivo=prompt(`Alta — ${cama.nombre_paciente}\n\n1. Mejoría\n2. Defunción\n3. Traslado a hospital\n\nEscribe 1, 2 o 3:`);
-  if(!motivo)return;
-  const m={'1':'Mejoría','2':'Defunción','3':'Traslado a hospital'};
-  const motivoFinal=m[motivo.trim()]||motivo.trim();
+  // Store camaId and open full alta modal
+  editingUrgId=camaId;
+  closeEditModalUrg();
+  // Initialize alta modal
+  document.getElementById('enf-alta-form-normal').style.display='none';
+  document.getElementById('enf-alta-form-hospital').style.display='none';
+  document.getElementById('enf-alta-opts-btns').style.display='flex';
+  document.getElementById('enf-alta-overlay').classList.add('open');
+}
+
+function closeEnfAltaModal(){
+  document.getElementById('enf-alta-overlay').classList.remove('open');
+  enfAltaCamaHospId=null; enfAltaCamaHospNum=null;
+}
+
+function backToEnfAltaOpts(){
+  document.getElementById('enf-alta-form-normal').style.display='none';
+  document.getElementById('enf-alta-form-hospital').style.display='none';
+  document.getElementById('enf-alta-opts-btns').style.display='flex';
+}
+
+function selectEnfAlta(motivo){
+  document.getElementById('enf-alta-opts-btns').style.display='none';
+  if(motivo==='Hospitalización'){
+    document.getElementById('enf-alta-fecha-hosp').value=new Date().toISOString().split('T')[0];
+    document.getElementById('enf-alta-form-hospital').style.display='block';
+    loadEnfCamasHospital();
+  } else {
+    document.getElementById('enf-alta-motivo').value=motivo;
+    document.getElementById('enf-alta-fecha').value=new Date().toISOString().split('T')[0];
+    document.getElementById('enf-alta-form-normal').style.display='block';
+  }
+}
+
+let enfAltaCamaHospId=null, enfAltaCamaHospNum=null;
+
+async function loadEnfCamasHospital(){
+  const grid=document.getElementById('enf-cama-hosp-grid');
+  grid.innerHTML='<div class="loading"><div class="spinner"></div></div>';
+  const{data,error}=await db.from('camas_hospitalizacion').select('id,numero_cama,nombre_paciente,sort_order').order('sort_order',{ascending:true});
+  if(error){grid.innerHTML='<p style="color:#c00;font-size:12px;">Error al cargar camas</p>';return;}
+  enfAltaCamaHospId=null; enfAltaCamaHospNum=null;
+  document.getElementById('enf-cama-seleccionada-msg').textContent='';
+  grid.innerHTML=data.map(c=>{
+    const ocupada=!!c.nombre_paciente;
+    return `<div style="padding:6px 10px;border:1px solid ${ocupada?'#fca5a5':'#b2d98a'};border-radius:6px;
+      font-size:11px;font-weight:600;text-align:center;cursor:${ocupada?'not-allowed':'pointer'};
+      background:${ocupada?'#FEF2F2':'#EAF3DE'};color:${ocupada?'#991b1b':'#27660A'};
+      opacity:${ocupada?'.6':'1'}"
+      title="${ocupada?'OCUPADA: '+c.nombre_paciente:'Disponible'}"
+      onclick="${ocupada?`showToast('Cama ocupada','error')`:`selectEnfCamaHosp('${c.id}','${c.numero_cama}')`}">
+      ${c.numero_cama}
+    </div>`;
+  }).join('');
+}
+
+function selectEnfCamaHosp(id,num){
+  enfAltaCamaHospId=id; enfAltaCamaHospNum=num;
+  document.getElementById('enf-cama-seleccionada-msg').textContent=`✓ Cama seleccionada: ${num}`;
+}
+
+async function confirmarEnfAltaNormal(){
+  const motivo=document.getElementById('enf-alta-motivo').value;
+  const fecha=document.getElementById('enf-alta-fecha').value;
+  if(!fecha){showToast('Indica la fecha de alta','error');return;}
+  await registrarEnfEgreso(motivo, fecha, null);
+}
+
+async function confirmarEnfAltaHospital(){
+  if(!enfAltaCamaHospId){showToast('Selecciona una cama de hospitalización','error');return;}
+  const fecha=document.getElementById('enf-alta-fecha-hosp').value;
+  if(!fecha){showToast('Indica la fecha','error');return;}
+  const{data:camaData}=await db.from('camas_hospitalizacion').select('nombre_paciente').eq('id',enfAltaCamaHospId).single();
+  if(camaData&&camaData.nombre_paciente){
+    showToast('⚠️ Cama Ocupada — selecciona otra','error');
+    enfAltaCamaHospId=null; enfAltaCamaHospNum=null;
+    document.getElementById('enf-cama-seleccionada-msg').textContent='';
+    await loadEnfCamasHospital(); return;
+  }
+  const row=allRows.find(r=>r.id===editingUrgId);
+  if(!row)return;
+  const hospPayload={
+    nombre_paciente:row.nombre_paciente, sexo:row.sexo, cedula:row.cedula,
+    tipo_dh:row.tipo_dh, edad:row.edad, fecha_ingreso:row.fecha_ingreso,
+    diagnostico:row.diagnostico,
+    prealerta:false, ventilador:row.ventilador||false,
+    aislado:row.aislado||false, cirugia_pendiente:false,
+    vpo_pendiente:false, material_qx:false, caso_riesgo:row.caso_riesgo||false,
+  };
+  const{error:hErr}=await db.from('camas_hospitalizacion').update(hospPayload).eq('id',enfAltaCamaHospId);
+  if(hErr){showToast('Error al asignar cama: '+hErr.message,'error');return;}
+  await registrarEnfEgreso('Hospitalización', fecha, enfAltaCamaHospNum);
+}
+
+async function registrarEnfEgreso(motivo, fecha, camaHosp){
+  const row=allRows.find(r=>r.id===editingUrgId);
+  if(!row)return;
   await db.from('egresos_urgencias').insert({
-    numero_cama:cama.numero_cama, nombre_paciente:cama.nombre_paciente,
-    sexo:cama.sexo, servicio:cama.servicio, cedula:cama.cedula,
-    tipo_dh:cama.tipo_dh, edad:cama.edad, fecha_ingreso:cama.fecha_ingreso,
-    diagnostico:cama.diagnostico, motivo_alta:motivoFinal,
-    fecha_alta:new Date().toISOString().split('T')[0],
+    numero_cama:row.numero_cama, nombre_paciente:row.nombre_paciente,
+    sexo:row.sexo, cedula:row.cedula, tipo_dh:row.tipo_dh,
+    edad:row.edad, fecha_ingreso:row.fecha_ingreso,
+    diagnostico:row.diagnostico, motivo_alta:motivo,
+    cama_hospital:camaHosp, fecha_alta:fecha,
   });
   const limpio={nombre_paciente:null,sexo:null,servicio:null,cedula:null,
     tipo_dh:null,edad:null,fecha_ingreso:null,diagnostico:null,
     pendientes:null,triaje:null,ventilador:false,aislado:false,caso_riesgo:false};
-  await db.from('camas_urgencias').update(limpio).eq('id',camaId);
-  showToast(`Alta registrada: ${motivoFinal}`,'success');
-  closeEditModalUrg();
+  await db.from('camas_urgencias').update(limpio).eq('id',editingUrgId);
+  showToast(`Alta: ${motivo}`,'success');
+  closeEnfAltaModal(); editingUrgId=null;
   await loadAll();
 }
 </script>
@@ -900,6 +989,39 @@ function hacerCorte(){
   win.document.close();
 }
 </script>
+
+<!-- MODAL ALTA ENFERMERÍA URGENCIAS -->
+<div class="modal-overlay" id="enf-alta-overlay">
+  <div class="modal" style="max-width:440px;">
+    <div class="modal-title">🏥 Alta del paciente</div>
+    <div style="font-size:13px;color:var(--texto-2);margin-bottom:12px;">Selecciona el motivo de egreso:</div>
+    <div id="enf-alta-opts-btns" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px;">
+      <button class="btn" style="justify-content:flex-start;gap:8px;border-left:4px solid var(--verde);" onclick="selectEnfAlta('Mejoría')">✅ Mejoría</button>
+      <button class="btn" style="justify-content:flex-start;gap:8px;border-left:4px solid var(--texto-3);" onclick="selectEnfAlta('Defunción')">🕊️ Defunción</button>
+      <button class="btn" style="justify-content:flex-start;gap:8px;border-left:4px solid var(--naranja);" onclick="selectEnfAlta('Traslado a otra unidad')">🚑 Traslado a otra unidad</button>
+      <button class="btn" style="justify-content:flex-start;gap:8px;border-left:4px solid var(--azul);" onclick="selectEnfAlta('Hospitalización')">🏨 Hospitalización</button>
+    </div>
+    <div id="enf-alta-form-normal" style="display:none;">
+      <div class="field"><label>Motivo</label><input type="text" id="enf-alta-motivo" readonly style="background:var(--bg);"/></div>
+      <div class="field"><label>Fecha de alta</label><input type="date" id="enf-alta-fecha"/></div>
+      <div class="modal-footer">
+        <button class="btn btn-sm" onclick="backToEnfAltaOpts()">← Volver</button>
+        <button class="btn btn-sm btn-primary" onclick="confirmarEnfAltaNormal()">Confirmar alta</button>
+      </div>
+    </div>
+    <div id="enf-alta-form-hospital" style="display:none;">
+      <div style="font-size:12px;color:var(--texto-2);margin-bottom:8px;">Selecciona la cama de hospitalización:</div>
+      <div id="enf-cama-hosp-grid" style="display:grid;grid-template-columns:repeat(5,1fr);gap:6px;max-height:200px;overflow-y:auto;margin-bottom:8px;"></div>
+      <div id="enf-cama-seleccionada-msg" style="font-size:12px;font-weight:500;color:var(--azul);margin:4px 0;min-height:18px;"></div>
+      <div class="field"><label>Fecha de traslado</label><input type="date" id="enf-alta-fecha-hosp"/></div>
+      <div class="modal-footer">
+        <button class="btn btn-sm" onclick="backToEnfAltaOpts()">← Volver</button>
+        <button class="btn btn-sm btn-primary" onclick="confirmarEnfAltaHospital()">Confirmar traslado</button>
+      </div>
+    </div>
+    <button class="btn btn-sm" onclick="closeEnfAltaModal()" style="margin-top:4px;width:100%;justify-content:center;">Cancelar</button>
+  </div>
+</div>
 
 <!-- MODAL VINCULAR ADMISIÓN -->
 <div class="modal-overlay" id="va-overlay" style="z-index:600;">

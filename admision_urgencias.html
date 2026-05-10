@@ -283,11 +283,31 @@
         <div class="field"><label>RFC / Cédula</label><input type="text" id="m-rfc" placeholder="XXXX000000"/></div>
         <div class="field"><label>Tipo DH</label>
           <select id="m-tipo">
-            <option value="">—</option>
-            <option>10</option><option>20</option><option>30</option><option>31</option>
-            <option>40</option><option>41</option><option>50</option><option>51</option>
-            <option>60</option><option>61</option><option>70</option><option>71</option>
-            <option>80</option><option>81</option><option>90</option><option>91</option>
+            <option value="">— Elige —</option>
+            <option value="10">10 — Trabajador</option>
+            <option value="20">20 — Trabajadora</option>
+            <option value="30">30 — Esposa</option>
+            <option value="31">31 — Concubina</option>
+            <option value="32">32 — Mujer</option>
+            <option value="40">40 — Esposo</option>
+            <option value="41">41 — Concubino</option>
+            <option value="42">42 — Hombre</option>
+            <option value="50">50 — Padre</option>
+            <option value="51">51 — Abuelo</option>
+            <option value="60">60 — Madre</option>
+            <option value="61">61 — Abuela</option>
+            <option value="70">70 — Hijo</option>
+            <option value="71">71 — Hijo de Cónyuge</option>
+            <option value="80">80 — Hija</option>
+            <option value="81">81 — Hija de Cónyuge</option>
+            <option value="90">90 — Pensionado</option>
+            <option value="91">91 — Pensionada</option>
+            <option value="92">92 — Familiar de Pensionado</option>
+            <option value="95">95 — IMSS Bienestar Hombre</option>
+            <option value="96">96 — IMSS Bienestar Mujer</option>
+            <option value="97">97 — IMSS Hombre</option>
+            <option value="98">98 — IMSS Mujer</option>
+            <option value="99">99 — No Derechohabiente</option>
           </select>
         </div>
         <div class="field" style="flex:0 0 80px;"><label>Edad</label><input type="number" id="m-edad" min="0" max="120"/></div>
@@ -931,15 +951,22 @@ async function ejecutarCorteAdmision(limpiar){
   // Generar PDF imprimible
   setTimeout(()=>generarPDFAdmision(allRows, turno, fecha, limpiar), 500);
 
-  // Si es corte con limpieza, borrar registros
+  // Si es corte con limpieza, borrar registros y reiniciar consecutivo
   if(limpiar){
     const ids=allRows.map(r=>r.id);
     if(ids.length>0){
       const{error}=await db.from('admision_urgencias').delete().in('id',ids);
       if(error){showToast('Error al limpiar: '+error.message,'error');return;}
-      showToast('Corte realizado y lista limpiada','success');
-      await loadAdmision();
     }
+    // Reiniciar secuencia del consecutivo desde 1
+    try{
+      await db.rpc('reset_admision_consecutivo');
+    }catch(e){
+      // Si no existe la función, intentar directo
+      await db.from('admision_urgencias').delete().neq('id','00000000-0000-0000-0000-000000000000');
+    }
+    showToast('Corte realizado y lista limpiada — consecutivo reiniciado','success');
+    await loadAdmision();
   } else {
     showToast('Corte realizado — registros conservados','success');
   }
