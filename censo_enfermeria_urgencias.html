@@ -429,7 +429,8 @@ function renderCenso(){
     <tr data-id="${r.id}" data-cama="${r.numero_cama}" draggable="true"
       ondragstart="onDragStartEnf(event)" ondragover="onDragOverEnf(event)"
       ondrop="onDropEnf(event)" ondragleave="this.classList.remove('drag-over-enf')"
-      style="border-bottom:none;">
+      ondblclick="if(event.target.tagName!=='TEXTAREA')openModalById('${r.id}')"
+      style="border-bottom:none;cursor:pointer;" title="Doble clic para editar">
       <td class="col-cama" style="vertical-align:middle;border-bottom:none;" rowspan="2">
         <span class="drag-handle-enf">⠿</span>
         <span class="cama-lbl">${r.numero_cama}</span>
