@@ -201,7 +201,10 @@
 
     <!-- TABLERO -->
     <div class="tablero">
-      <div class="tablero-title">📋 Movimientos Urgencias por turno</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <div class="tablero-title" style="margin:0;">📋 Movimientos Urgencias por turno</div>
+        <button class="btn btn-sm" onclick="nuevoDia()" style="font-size:11px;background:#185FA5;color:#fff;border-color:#185FA5;" title="Pone en ceros los turnos anteriores, conserva el turno actual">🔄 Nuevo día</button>
+      </div>
       <div style="overflow-x:auto;">
         <table class="tablero-table">
           <thead id="tablero-thead">
@@ -458,7 +461,23 @@ function renderTablero(){
   document.getElementById('tablero-tbody').innerHTML = html;
 }
 
-// Llamar cuando ingresa un paciente nuevo (desde saveModal/saveRow)
+// Quirófano: solo una opción por paciente (mutual exclusion en tabla)
+async function setQx(camaId, field, checked){
+  if(!enfData[camaId]) enfData[camaId]={};
+  // Desmarcar todas las otras opciones del mismo paciente
+  const qxFields = ['qx_admision','qx_quirofano','qx_recuperacion','qx_labor'];
+  qxFields.forEach(f=>{ enfData[camaId][f] = false; });
+  enfData[camaId][field] = checked;
+  // Actualizar checkboxes en el DOM sin re-renderizar todo
+  const row = document.querySelector(`tr[data-id="${camaId}"]`);
+  if(row){
+    const checks = row.querySelectorAll('input[type="checkbox"][title="Admisión"],input[type="checkbox"][title="Quirófano"],input[type="checkbox"][title="Recuperación"],input[type="checkbox"][title="Labor"]');
+    checks.forEach(cb=>{ cb.checked = enfData[camaId]['qx_'+{Admisión:'admision',Quirófano:'quirofano',Recuperación:'recuperacion',Labor:'labor'}[cb.title]]; });
+  }
+  await saveRow(camaId);
+}
+
+// Llamar cuando ingresa un paciente nuevo
 function registrarIngreso(servicio){
   if(!turnoActivo) return;
   const a = AREAS_URG.includes(servicio)?servicio:'Urgencias';
@@ -467,6 +486,7 @@ function registrarIngreso(servicio){
 }
 
 // Llamar cuando se da de alta un paciente
+// NOTA: cuenta el egreso SIEMPRE, aunque el paciente haya ingresado en el mismo turno
 function registrarEgreso(servicio){
   if(!turnoActivo) return;
   const a = AREAS_URG.includes(servicio)?servicio:'Urgencias';
@@ -562,24 +582,16 @@ function renderCenso(){
       <td class="editable" style="border-bottom:none;">${taCell(e.cuidados_especiales,r.id,'cuidados_especiales')}</td>
       <td class="editable" style="border-bottom:none;">${taCell(e.pendientes,r.id,'pendientes')}</td>
       <td style="border-bottom:none;text-align:center;vertical-align:middle;">
-        <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:3px;justify-content:center;">
-          <input type="checkbox" ${e.qx_admision?'checked':''} onchange="updateField('${r.id}','qx_admision',this.checked);saveRow('${r.id}');"/>
-        </label>
+        <input type="checkbox" title="Admisión" ${e.qx_admision?'checked':''} onchange="setQx('${r.id}','qx_admision',this.checked)"/>
       </td>
       <td style="border-bottom:none;text-align:center;vertical-align:middle;">
-        <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:3px;justify-content:center;">
-          <input type="checkbox" ${e.qx_quirofano?'checked':''} onchange="updateField('${r.id}','qx_quirofano',this.checked);saveRow('${r.id}');"/>
-        </label>
+        <input type="checkbox" title="Quirófano" ${e.qx_quirofano?'checked':''} onchange="setQx('${r.id}','qx_quirofano',this.checked)"/>
       </td>
       <td style="border-bottom:none;text-align:center;vertical-align:middle;">
-        <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:3px;justify-content:center;">
-          <input type="checkbox" ${e.qx_recuperacion?'checked':''} onchange="updateField('${r.id}','qx_recuperacion',this.checked);saveRow('${r.id}');"/>
-        </label>
+        <input type="checkbox" title="Recuperación" ${e.qx_recuperacion?'checked':''} onchange="setQx('${r.id}','qx_recuperacion',this.checked)"/>
       </td>
       <td style="border-bottom:none;text-align:center;vertical-align:middle;">
-        <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:3px;justify-content:center;">
-          <input type="checkbox" ${e.qx_labor?'checked':''} onchange="updateField('${r.id}','qx_labor',this.checked);saveRow('${r.id}');"/>
-        </label>
+        <input type="checkbox" title="Labor" ${e.qx_labor?'checked':''} onchange="setQx('${r.id}','qx_labor',this.checked)"/>
       </td>
       <td style="vertical-align:middle;border-bottom:none;">
         <button class="save-row-btn" onclick="saveRow('${r.id}');event.stopPropagation();">💾</button>
@@ -977,6 +989,13 @@ async function registrarEnfEgreso(motivo, fecha, camaHosp){
 
 // ── MODAL ASIGNAR CAMA VACÍA (igual que censo urgencias) ──
 
+function nuevoDia(){
+  if(!confirm('¿Confirmas iniciar nuevo día? Se pondrán en ceros los turnos anteriores.')) return;
+  movimientosHistorial = {};
+  renderTablero();
+  showToast('Historial de turnos reiniciado','success');
+}
+
 function hacerCorte(){
   if(!turnoActivo){
     alert('Para iniciar a registrar, debe elegir un turno.');
@@ -984,86 +1003,132 @@ function hacerCorte(){
   }
   const turnoLabel = TURNO_LABELS[turnoActivo] || turnoActivo;
   const fecha = document.getElementById('fecha-censo').value || currentFecha;
-  const ocupadas = allRows.filter(r=>r.nombre_paciente);
-
-  // Calcular movimientos del turno
-  const movimientos = {};
-  AREAS_URG.forEach(a=>{ movimientos[a]={recibo:0,ingresos:0,egresos:0}; });
-
-  // 1. Recibo = todos los pacientes actuales
-  ocupadas.forEach(r=>{
-    const a = AREAS_URG.includes(r.servicio)?r.servicio:'Urgencias';
-    movimientos[a].recibo++;
-  });
-  // 2. Ingresos = los que no estaban en snapshotTurno
+  const todasLasCamas = [...allRows].sort((a,b)=> (a.sort_order||0)-(b.sort_order||0));
+  const ocupadas = todasLasCamas.filter(r=>r.nombre_paciente);
   const snapSet = new Set(snapshotTurno);
-  ocupadas.forEach(r=>{
-    if(!snapSet.has(r.id)){
-      const a = AREAS_URG.includes(r.servicio)?r.servicio:'Urgencias';
-      movimientos[a].ingresos++;
-    }
-  });
-  // 3. Egresos = acumulados en egresosDelTurno
-  AREAS_URG.forEach(a=>{ movimientos[a].egresos = egresosDelTurno[a]||0; });
+  const cols = getColumnasTablero();
 
-  // Guardar en historial para el tablero
-  movimientosHistorial[turnoActivo] = movimientos;
+  // ── Calcular movimientos del turno activo ──────────────────────
+  // Adultos (>=18) y Pediátrico (<18)
+  const adultos_r   = ocupadas.filter(r=>(r.edad||0)>=18).length;
+  const adultos_i   = ocupadas.filter(r=>(r.edad||0)>=18 && !snapSet.has(r.id)).length;
+  const adultos_e   = egresosDelTurno['adultos']||0;
+  const pediatrico_r = ocupadas.filter(r=>(r.edad||0)<18).length;
+  const pediatrico_i = ocupadas.filter(r=>(r.edad||0)<18 && !snapSet.has(r.id)).length;
+  const pediatrico_e = egresosDelTurno['pediatrico']||0;
+  const choque_r = ocupadas.filter(r=>(r.numero_cama||'').toUpperCase().includes('CHOQUE')).length;
+  const choque_i = ingresosDelTurno['CHOQUE']||0;
+  const choque_e = egresosDelTurno['CHOQUE']||0;
+  // Quirófano sections: count marked checkboxes
+  const qxCounts = {adm:0,qx:0,rec:0,lab:0};
+  ocupadas.forEach(r=>{ const e=enfData[r.id]||{};
+    if(e.qx_admision) qxCounts.adm++;
+    if(e.qx_quirofano) qxCounts.qx++;
+    if(e.qx_recuperacion) qxCounts.rec++;
+    if(e.qx_labor) qxCounts.lab++;
+  });
+
+  // Save to historial
+  movimientosHistorial[turnoActivo] = {
+    adultos_r,adultos_i,adultos_e,
+    pediatrico_r,pediatrico_i,pediatrico_e,
+    choque_r,choque_i,choque_e,
+    adm_r:qxCounts.adm, adm_i:ingresosDelTurno['adm']||0, adm_e:egresosDelTurno['adm']||0,
+    qx_r:qxCounts.qx,  qx_i:ingresosDelTurno['qx']||0,  qx_e:egresosDelTurno['qx']||0,
+    rec_r:qxCounts.rec, rec_i:ingresosDelTurno['rec']||0, rec_e:egresosDelTurno['rec']||0,
+    lab_r:qxCounts.lab, lab_i:ingresosDelTurno['lab']||0, lab_e:egresosDelTurno['lab']||0,
+  };
   renderTablero();
 
-  // CSV
+  // ── CSV: usar tabulador como separador para que Excel lo abra en columnas ──
+  const SEP = '\t';
   const bom = '\ufeff';
-  const headers = ['Cama','Triaje','Nombre','Cédula','Tipo DH','Edad','Sexo','Ingreso','DEH','Diagnóstico','VVP/Inf','Antibióticos','Cuidados Esp','Pendientes'];
-  const csvRows = ocupadas.map(r=>{
+  const headers = ['Cama','Estado','Triaje','Nombre','Cédula','Tipo DH','Edad','Sexo','Ingreso','DEH','Diagnóstico','VVP/Inf','Antibióticos','Cuidados Esp','Pendientes','Admisión','Quirófano','Recuperación','Labor'];
+  const csvRows = todasLasCamas.map(r=>{
     const e = enfData[r.id]||{};
-    const deh = calcDEH(r.fecha_ingreso)??'';
-    return [r.numero_cama, r.triaje||'',
-      `"${(r.nombre_paciente||'').replace(/"/g,'\\"')}"`,
-      r.cedula||'', r.tipo_dh||'', r.edad||'', r.sexo||'',
-      r.fecha_ingreso||'', deh,
-      `"${(r.diagnostico||'').replace(/"/g,'\\"')}"`,
-      `"${(e.infusiones||'').replace(/"/g,'\\"')}"`,
-      `"${(e.antibioticos||'').replace(/"/g,'\\"')}"`,
-      `"${(e.cuidados_especiales||'').replace(/"/g,'\\"')}"`,
-      `"${(e.pendientes||'').replace(/"/g,'\\"')}"`
-    ].join(',');
+    const deh = r.nombre_paciente ? (calcDEH(r.fecha_ingreso)??'') : '';
+    return [
+      r.numero_cama,
+      r.nombre_paciente?'Ocupada':'Disponible',
+      r.triaje||'',
+      r.nombre_paciente||'',
+      r.cedula||'',
+      r.tipo_dh||'',
+      r.edad||'',
+      r.sexo||'',
+      r.fecha_ingreso||'',
+      deh,
+      r.diagnostico||'',
+      e.infusiones||'',
+      e.antibioticos||'',
+      e.cuidados_especiales||'',
+      e.pendientes||'',
+      e.qx_admision?'✓':'',
+      e.qx_quirofano?'✓':'',
+      e.qx_recuperacion?'✓':'',
+      e.qx_labor?'✓':'',
+    ].join(SEP);
   });
-  const csv = bom + [headers.join(','), ...csvRows].join('\r\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
-  a.download = `corte_urgencias_enf_${turnoLabel.replace(/ /g,'_')}_${fecha}.csv`;
-  a.click();
+  const csv = bom + [headers.join(SEP), ...csvRows].join('\r\n');
+  const aEl = document.createElement('a');
+  aEl.href = URL.createObjectURL(new Blob([csv],{type:'text/tab-separated-values;charset=utf-8;'}));
+  aEl.download = `corte_urgencias_enf_${turnoLabel.replace(/ /g,'_')}_${fecha}.tsv`;
+  aEl.click();
 
-  // PDF
-  const movRows = AREAS_URG.map(area=>{
-    const m = movimientos[area];
-    return `<tr>
-      <td style="font-weight:600;">${area}</td>
-      <td style="text-align:center;">${m.recibo}</td>
-      <td style="text-align:center;">${m.ingresos}</td>
-      <td style="text-align:center;">${m.egresos}</td>
-      <td style="text-align:center;font-weight:700;">${m.recibo+m.ingresos-m.egresos}</td>
-    </tr>`;
+  // ── PDF ───────────────────────────────────────────────────────
+  // Tabla de movimientos en nuevo formato (filas: Recibo/Ingresos/Egresos/Entrego × 7 secciones × turnos)
+  const sections = ['Pac. Adultos','Pac. Pediátrico','Cto. Choque','Admisión','Quirófano','Recuperación','Labor'];
+  const turnosLabels = cols.map(col=> TURNO_LABELS[col]||col);
+  const movHeaders = `<tr>
+    <th rowspan="2">Servicios</th>
+    ${sections.map(s=>`<th colspan="${cols.length}">${s}</th>`).join('')}
+  </tr><tr>${sections.map(()=>turnosLabels.map(t=>`<th style="font-size:8px;">${t}</th>`).join('')).join('')}</tr>`;
+
+  function getMovVal(col,skey){
+    const h = movimientosHistorial[col]||{};
+    return h[skey]||0;
+  }
+  const movDataRows = ['_r','_i','_e'].map((sfx,ri)=>{
+    const label=['Recibo','Ingresos','Egresos'][ri];
+    const sk=['adultos','pediatrico','choque','adm','qx','rec','lab'];
+    const celdas = sk.map(s=> cols.map(col=>`<td style="text-align:center;">${getMovVal(col,s+sfx)}</td>`).join('')).join('');
+    return `<tr><td style="font-weight:600;">${label}</td>${celdas}</tr>`;
   }).join('');
-  const pacRows = ocupadas.map(r=>{
+  const entregoRow = (() => {
+    const sk=['adultos','pediatrico','choque','adm','qx','rec','lab'];
+    const celdas = sk.map(s=> cols.map(col=>{
+      const r=getMovVal(col,s+'_r'), i=getMovVal(col,s+'_i'), e=getMovVal(col,s+'_e');
+      return `<td style="text-align:center;font-weight:700;">${r+i-e}</td>`;
+    }).join('')).join('');
+    return `<tr style="background:#F5EBF0;"><td style="font-weight:700;">Entrego</td>${celdas}</tr>`;
+  })();
+
+  // Todas las camas en el PDF, en orden
+  const camaPDFRows = todasLasCamas.map(r=>{
     const e = enfData[r.id]||{};
-    const deh = calcDEH(r.fecha_ingreso);
+    const deh = r.nombre_paciente ? (calcDEH(r.fecha_ingreso)??'') : '';
+    const qxStr = e.qx_admision?'Admisión': e.qx_quirofano?'Quirófano': e.qx_recuperacion?'Recuperación': e.qx_labor?'Labor': '';
+    if(!r.nombre_paciente) return `<tr style="color:#aaa;">
+      <td style="font-weight:700;">${r.numero_cama}</td>
+      <td colspan="10" style="font-style:italic;text-align:center;">— disponible —</td>
+    </tr>`;
     return `<tr>
       <td style="font-weight:700;">${r.numero_cama}</td>
       <td>${r.triaje||''}</td>
       <td style="font-weight:600;">${r.nombre_paciente||''}</td>
       <td>${r.cedula||''}</td>
       <td>${r.edad||''}</td>
-      <td>${deh??''}</td>
+      <td>${deh}</td>
       <td>${r.diagnostico||''}</td>
       <td>${e.infusiones||''}</td>
       <td>${e.antibioticos||''}</td>
       <td>${e.cuidados_especiales||''}</td>
-      <td>${e.pendientes||''}</td>
+      <td>${qxStr}</td>
     </tr>`;
   }).join('');
 
   setTimeout(()=>{
-    const win = window.open('','_blank','width=1100,height=800');
+    const win = window.open('','_blank','width=1200,height=900');
     win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
     <title>Corte Enfermería Urgencias — ${turnoLabel} ${fecha}</title>
     <style>body{font-family:Arial;font-size:10px;margin:14px;color:#111;}
@@ -1082,28 +1147,26 @@ function hacerCorte(){
     .firma{text-align:center;flex:1;border-top:1px solid #000;padding-top:3px;font-size:9px;}
     @media print{body{margin:6px;}}</style></head><body>
     <div class="encab">
-      <div><h2>Clínica Hospital Dr. Miguel Trejo Ochoa</h2><h3>Corte Enfermería — Urgencias</h3></div>
+      <div><h2>Clínica Hospital Dr. Miguel Trejo Ochoa</h2><h3>Corte Enfermería — Urgencias | ${turnoLabel}</h3></div>
       <div style="text-align:right;font-size:10px;">
-        <div><b>Turno:</b> ${turnoLabel}</div>
         <div><b>Fecha:</b> ${fecha}</div>
         <div><b>Hora:</b> ${new Date().toLocaleTimeString('es-MX')}</div>
         <div><b>Elaboró:</b> ${currentUser?.nombre||''}</div>
       </div>
     </div>
     <div class="stats">
-      <div class="stat"><div class="n">${allRows.length}</div><div class="l">Total camas</div></div>
+      <div class="stat"><div class="n">${todasLasCamas.length}</div><div class="l">Total camas</div></div>
       <div class="stat"><div class="n" style="color:#854F0B;">${ocupadas.length}</div><div class="l">Ocupadas</div></div>
-      <div class="stat"><div class="n" style="color:#3B6D11;">${allRows.length-ocupadas.length}</div><div class="l">Disponibles</div></div>
+      <div class="stat"><div class="n" style="color:#3B6D11;">${todasLasCamas.length-ocupadas.length}</div><div class="l">Disponibles</div></div>
     </div>
-    <div class="sec"><div class="sec-t">Movimientos del turno — ${turnoLabel}</div>
-      <table><thead><tr><th>Área</th><th>Recibo</th><th>Ingresos</th><th>Egresos</th><th>Entrego</th></tr></thead>
-      <tbody>${movRows}</tbody></table></div>
-    <div class="sec"><div class="sec-t">Censo al corte (${ocupadas.length} pacientes)</div>
+    <div class="sec"><div class="sec-t">Movimientos urgencias por turno</div>
+      <table><thead>${movHeaders}</thead><tbody>${movDataRows}${entregoRow}</tbody></table></div>
+    <div class="sec"><div class="sec-t">Censo completo al corte (${todasLasCamas.length} camas)</div>
       <table><thead><tr>
         <th>Cama</th><th>Triaje</th><th>Nombre</th><th>Cédula</th>
         <th>Edad</th><th>DEH</th><th>Diagnóstico</th>
-        <th>VVP/Inf.</th><th>Antibióticos</th><th>Cuidados Esp.</th><th>Pendientes</th>
-      </tr></thead><tbody>${pacRows}</tbody></table></div>
+        <th>VVP/Inf.</th><th>Antibióticos</th><th>Cuidados Esp.</th><th>Quirófano</th>
+      </tr></thead><tbody>${camaPDFRows}</tbody></table></div>
     <div class="firmas">
       <div class="firma">Firma Jefa de Enfermería que entrega</div>
       <div class="firma">Firma Jefa de Enfermería que recibe</div>
@@ -1113,7 +1176,7 @@ function hacerCorte(){
     win.document.close();
   }, 600);
 
-  // Deseleccionar turno y bloquear censo
+  // ── Deseleccionar turno y bloquear censo ──────────────────────
   turnoActivo = null;
   cortePendiente = false;
   ingresosDelTurno = {};
@@ -1123,8 +1186,10 @@ function hacerCorte(){
   document.getElementById('censo-bloqueado-msg').style.display='block';
   renderTablero();
   renderCenso();
-  showToast('Corte generado — CSV y PDF listos','success');
+  showToast('Corte generado — archivo y PDF listos','success');
 }
+
+</script>
 </script>
 
 <!-- ═══════════════════════════════════════════════════════════════
@@ -1185,6 +1250,16 @@ function hacerCorte(){
       <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-aisl"/> ☢ Aislado</label>
       <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="checkbox" id="m-riesgo"/> ⚠️ Riesgo</label>
     </div>
+    <div style="background:var(--bg);border-radius:var(--radio);padding:8px 12px;margin-bottom:10px;">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#5A1229;margin-bottom:6px;">Quirófano — solo una opción</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;">
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="radio" name="m-qx" value="admision"/> Admisión</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="radio" name="m-qx" value="quirofano"/> Quirófano</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="radio" name="m-qx" value="recuperacion"/> Recuperación</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;"><input type="radio" name="m-qx" value="labor"/> Labor</label>
+      </div>
+    </div>
+
     <div id="btn-alta-wrap" style="margin-bottom:10px;display:none;gap:8px;">
       <button class="btn btn-sm btn-danger" onclick="limpiarCama()">Liberar cama</button>
       <button class="btn btn-sm" style="background:#f59e0b;color:#fff;border-color:#f59e0b;" onclick="openAltaModal()">🏥 Alta</button>
@@ -1276,6 +1351,10 @@ function openModal(row){
   document.getElementById('m-vent').checked=!!(row&&row.ventilador);
   document.getElementById('m-aisl').checked=!!(row&&row.aislado);
   document.getElementById('m-riesgo').checked=!!(row&&row.caso_riesgo);
+  // Load quirofano radio
+  const e = row ? (enfData[row.id]||{}) : {};
+  const qxVal = e.qx_admision?'admision': e.qx_quirofano?'quirofano': e.qx_recuperacion?'recuperacion': e.qx_labor?'labor': '';
+  document.querySelectorAll('input[name="m-qx"]').forEach(r=>r.checked=(r.value===qxVal));
   const wrap=document.getElementById('btn-alta-wrap');
   wrap.style.display=tp?'flex':'none';
   document.getElementById('modal-overlay').classList.add('open');
@@ -1313,6 +1392,17 @@ async function saveModal(){
   const{error}=await db.from('camas_urgencias').update(p).eq('id',editingId);
   if(error)showToast('Error: '+error.message,'error');
   else{
+    // Guardar quirofano en enfData y Supabase
+    const qxSel = document.querySelector('input[name="m-qx"]:checked')?.value||'';
+    const qxPayload = {
+      qx_admision:    qxSel==='admision',
+      qx_quirofano:   qxSel==='quirofano',
+      qx_recuperacion:qxSel==='recuperacion',
+      qx_labor:       qxSel==='labor',
+    };
+    if(!enfData[editingId]) enfData[editingId]={};
+    Object.assign(enfData[editingId], qxPayload);
+    await saveRow(editingId);
     // Si la cama estaba vacía antes y ahora tiene paciente → es un ingreso
     const camaAntes=allRows.find(r=>r.id===editingId);
     if(!camaAntes?.nombre_paciente && p.nombre_paciente){
@@ -1453,18 +1543,24 @@ function filterVA(){
 function renderVincularAdmision(list){
   const grid=document.getElementById('va-grid');
   if(!list.length){grid.innerHTML='<p style="font-size:12px;color:var(--texto-3);">Sin pacientes en admisión</p>';return;}
-  grid.innerHTML=list.map(p=>`
-    <div style="padding:8px 12px;border:1px solid var(--gris-borde);border-radius:var(--radio);cursor:pointer;font-size:12px;background:var(--surface);margin-bottom:6px;transition:background .12s;"
-      onmouseover="this.style.background='var(--azul-lt)'" onmouseout="this.style.background='var(--surface)'"
-      onclick="seleccionarDeAdmision('${(p.nombre_paciente||'').replace(/'/g,"\\'")}','${p.rfc_cedula||''}','${p.tipo_dh||''}',${p.edad||0},'${(p.sintomas||'').replace(/'/g,"\\'").replace(/\n/g,' ')}')">
-      <div style="font-weight:600;color:var(--texto);">${p.nombre_paciente||''}</div>
+  // Nombres ya registrados en camas (para marcar como no seleccionables)
+  const nombresEnCenso=new Set(allRows.filter(r=>r.nombre_paciente).map(r=>r.nombre_paciente.trim().toLowerCase()));
+  grid.innerHTML=list.map(p=>{
+    const yaRegistrado=nombresEnCenso.has((p.nombre_paciente||'').trim().toLowerCase());
+    return `<div style="padding:8px 12px;border:1px solid ${yaRegistrado?'#ddd':'var(--gris-borde)'};border-radius:var(--radio);
+      cursor:${yaRegistrado?'not-allowed':'pointer'};font-size:12px;
+      background:${yaRegistrado?'#F1EFE8':'var(--surface)'};
+      opacity:${yaRegistrado?'.55':'1'};margin-bottom:6px;transition:background .12s;"
+      ${yaRegistrado?`title="Ya registrado en el censo"`:`onmouseover="this.style.background='var(--azul-lt)'" onmouseout="this.style.background='var(--surface)'"
+      onclick="seleccionarDeAdmision('${(p.nombre_paciente||'').replace(/'/g,"\\'")}','${p.rfc_cedula||''}','${p.tipo_dh||''}',${p.edad||0},'${(p.sintomas||'').replace(/'/g,"\\'").replace(/\n/g,' ')}')"` }>
+      <div style="font-weight:600;color:${yaRegistrado?'#888':'var(--texto)'};">${p.nombre_paciente||''} ${yaRegistrado?'<span style="font-size:10px;color:#999;">(ya en censo)</span>':''}</div>
       <div style="color:var(--texto-2);font-size:11px;margin-top:2px;">
         RFC: ${p.rfc_cedula||'—'} · Tipo: ${p.tipo_dh||'—'} · Edad: ${p.edad||'—'} · ${p.hora_llegada||''} ·
         <span style="color:${p.estado==='Sala de espera'?'var(--naranja)':'var(--verde)'};">${p.estado||''}</span>
       </div>
       ${p.sintomas?`<div style="color:var(--texto-3);font-size:10px;margin-top:2px;">${p.sintomas.substring(0,60)}…</div>`:''}
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 }
 
 function seleccionarDeAdmision(nombre,rfc,tipo,edad,sintomas){
