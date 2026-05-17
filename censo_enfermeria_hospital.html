@@ -186,9 +186,7 @@
         <button class="turno-btn" id="tb-JN" onclick="setTurno('JN',this)">J. Nocturna</button>
       </div>
       <input type="date" id="fecha-censo" style="padding:6px 10px;border:1px solid var(--gris-borde);border-radius:var(--radio);font-size:12px;background:var(--bg);"/>
-      <button class="btn btn-sm btn-primary" onclick="guardarTodo()">💾 Guardar todo</button>
       <button class="btn btn-sm" style="background:#6366f1;color:#fff;border-color:#6366f1;" onclick="openCorteModal()">📄 Hacer corte</button>
-      <button class="btn btn-sm" onclick="window.print()">🖨️ Imprimir</button>
     </div>
 
     <!-- TABLERO MOVIMIENTOS -->
@@ -199,22 +197,8 @@
       </div>
       <div class="tablero-grid">
         <table class="tablero-table">
-          <thead>
-            <tr>
-              <th class="serv" rowspan="2">Servicio</th>
-              <th colspan="3" class="th-group">Matutino</th>
-              <th colspan="3" class="th-group">Vespertino</th>
-              <th colspan="3" class="th-group">Nocturno</th>
-              <th colspan="3" class="th-group">Jornada Diurna</th>
-              <th colspan="3" class="th-group">Jornada Nocturna</th>
-            </tr>
-            <tr>
-              <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
-              <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
-              <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
-              <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
-              <th>Recibo</th><th>Ingresos</th><th>Egresos</th>
-            </tr>
+          <thead id="tablero-thead">
+            <!-- Generado dinámicamente por renderTableroHeaders() -->
           </thead>
           <tbody id="tablero-tbody"></tbody>
         </table>
@@ -366,53 +350,97 @@ const SERVICIOS_TABLERO=['MI','Cx','TyO','GyO','Pedia','UCI'];
   }
 })();
 
-function setTurno(t,btn){
+// ── VARIABLES PARA CONTEO DE TURNO ──
+let turnoIngresos={}, turnoEgresos={}, snapshotAnterior=[];
+
+function setTurno(t, btn){
+  if(t===currentTurno) return;
+  document.getElementById('turno-confirm-nuevo').textContent=
+    {'M':'Matutino','V':'Vespertino','NLMV':'Nocturno LMV','NMJV':'Nocturno MJV','JD':'Jornada Diurna','JN':'Jornada Nocturna'}[t]||t;
+  document.getElementById('turno-confirm-overlay').classList.add('open');
+  document.getElementById('turno-confirm-overlay').dataset.pendingTurno=t;
+  document.getElementById('turno-confirm-overlay').dataset.pendingBtn=btn.id;
+}
+function aceptarCambioTurno(){
+  const ov=document.getElementById('turno-confirm-overlay');
+  const t=ov.dataset.pendingTurno;
+  const btn=document.getElementById(ov.dataset.pendingBtn);
+  ov.classList.remove('open');
+  _aplicarTurno(t, btn);
+}
+function regresarCambioTurno(){
+  document.getElementById('turno-confirm-overlay').classList.remove('open');
+}
+function _aplicarTurno(t, btn){
   currentTurno=t;
   document.querySelectorAll('.turno-btn').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
+  if(btn) btn.classList.add('active');
+  turnoIngresos={}; turnoEgresos={};
+  snapshotAnterior=allRows.filter(r=>r.nombre_paciente).map(r=>r.id);
+  renderTableroHeaders();
   renderTablero();
   renderCenso();
 }
 
-async function loadAll(){
+// ── TABLERO MOVIMIENTOS ──
+// Columnas según tipo de turno activo
+function getTurnosTablero(){
+  const esJornada=['JD','JN'].includes(currentTurno);
+  return esJornada
+    ? [{id:'JD',label:'Jornada Diurna'},{id:'JN',label:'Jornada Nocturna'}]
+    : [{id:'M',label:'Matutino'},{id:'V',label:'Vespertino'},{id:'N',label:'Nocturno'}];
+}
+
+function renderTableroHeaders(){
+  const turnos=getTurnosTablero();
+  const servLabel=SERVICIOS_TABLERO?'Servicio':'Área';
+  const thead=document.getElementById('tablero-thead');
+  if(!thead) return;
+  thead.innerHTML=`
+    <tr>
+      <th class="serv" rowspan="2">${servLabel}</th>
+      ${turnos.map(t=>`<th colspan="3" class="th-group">${t.label}</th>`).join('')}
+    </tr>
+    <tr>
+      ${turnos.map(()=>'<th>Recibo</th><th>Ingresos</th><th>Egresos</th>').join('')}
+    </tr>`;
+}
+
+function renderTablero(){
+  const turnos=getTurnosTablero();
+  const servicios=SERVICIOS_TABLERO;
+  const totales={};
+  turnos.forEach(t=>{totales[t.id]={r:0,i:0,e:0};});
+  const html=servicios.map(serv=>{
+    const celdas=turnos.map(t=>{
+      const d=tableroData[`${serv}_${t.id}`]||{recibo:0,ingresos:0,egresos:0};
+      totales[t.id].r+=d.recibo||0;
+      totales[t.id].i+=d.ingresos||0;
+      totales[t.id].e+=d.egresos||0;
+      return `<td>${d.recibo||0}</td><td>${d.ingresos||0}</td><td>${d.egresos||0}</td>`;
+    }).join('');
+    return `<tr><td class="serv-label">${serv}</td>${celdas}</tr>`;
+  }).join('');
+  const totRow=turnos.map(t=>`<td>${totales[t.id].r}</td><td>${totales[t.id].i}</td><td>${totales[t.id].e}</td>`).join('');
+  document.getElementById('tablero-tbody').innerHTML=html+`
+    <tr class="total-row"><td class="serv-label" style="color:var(--azul);font-weight:700;">TOTAL</td>${totRow}</tr>`;
+}
+
+
   const[hospRes, enfRes, tabRes]= await Promise.all([
     db.from('camas_hospitalizacion').select('*').order('sort_order',{ascending:true}),
     db.from('censo_enfermeria_hospital').select('*').eq('fecha',currentFecha),
     db.from('movimientos_turno').select('*').eq('fecha',currentFecha)
   ]);
   allRows=hospRes.data||[];
-  // Indexar datos de enfermería por cama_id
   enfData={};
   (enfRes.data||[]).forEach(r=>{ enfData[r.cama_id]=r; });
-  // Indexar tablero por servicio+turno
   tableroData={};
   (tabRes.data||[]).forEach(r=>{ tableroData[`${r.servicio}_${r.turno}`]=r; });
+  if(!snapshotAnterior.length) snapshotAnterior=allRows.filter(r=>r.nombre_paciente).map(r=>r.id);
+  renderTableroHeaders();
   renderTablero();
   renderCenso();
-}
-
-// ── TABLERO MOVIMIENTOS ──
-function renderTablero(){
-  const turnos=['M','V','N','JD','JN'];
-  const turnoLabels={'M':'Mat','V':'Vesp','N':'Noct','JD':'J.Diurna','JN':'J.Noct'};
-  const totales={};
-  turnos.forEach(t=>{totales[t]={r:0,i:0,e:0};});
-
-  const html=SERVICIOS_TABLERO.map(serv=>{
-    const celdas=turnos.map(t=>{
-      const key=`${serv}_${t}`;
-      const d=tableroData[key]||{recibo:0,ingresos:0,egresos:0};
-      totales[t].r+=d.recibo||0;
-      totales[t].i+=d.ingresos||0;
-      totales[t].e+=d.egresos||0;
-      return `<td>${d.recibo||0}</td><td>${d.ingresos||0}</td><td>${d.egresos||0}</td>`;
-    }).join('');
-    return `<tr><td class="serv-label">${serv}</td>${celdas}</tr>`;
-  }).join('');
-
-  const totRow=turnos.map(t=>`<td>${totales[t].r}</td><td>${totales[t].i}</td><td>${totales[t].e}</td>`).join('');
-  document.getElementById('tablero-tbody').innerHTML=html+`
-    <tr class="total-row"><td class="serv-label" style="color:var(--azul);font-weight:700;">TOTAL</td>${totRow}</tr>`;
 }
 
 // ── CENSO ENFERMERÍA ──
@@ -704,6 +732,11 @@ async function darAltaEnfermeria(camaId){
   };
   await db.from('egresos_hospital').insert(egreso);
 
+  // Track egreso in session memory for corte count
+  const sv=cama.servicio||cama.manejo_conjunto||'MI';
+  const svKey=SERVICIOS_TABLERO.includes(sv)?sv:'MI';
+  turnoEgresos[svKey]=(turnoEgresos[svKey]||0)+1;
+
   // Limpiar cama
   const limpio={nombre_paciente:null,sexo:null,servicio:null,manejo_conjunto:null,cedula:null,tipo_dh:null,gpo_rh:null,edad:null,fecha_ingreso:null,diagnostico:null,pendientes:null,prealerta:false,ventilador:false,aislado:false,cirugia_pendiente:false,vpo_pendiente:false,material_qx:false,caso_riesgo:false};
   await db.from('camas_hospitalizacion').update(limpio).eq('id',camaId);
@@ -713,10 +746,9 @@ async function darAltaEnfermeria(camaId){
   await loadAll();
 }
 
-// ── MODAL DE CORTE ──
+// ── HACER CORTE (usa conteo en memoria de sesión) ──
 function openCorteModal(){
   document.getElementById('corte-overlay').classList.add('open');
-  // Pre-seleccionar turno actual
   document.getElementById('corte-turno').value=currentTurno;
 }
 function closeCorteModal(){document.getElementById('corte-overlay').classList.remove('open');}
@@ -725,95 +757,86 @@ async function ejecutarCorte(){
   const turnoEntrega=document.getElementById('corte-turno').value;
   if(!turnoEntrega){showToast('Selecciona el turno que se entrega','error');return;}
   const fecha=document.getElementById('fecha-censo').value||currentFecha;
-  const turnoLabel={'M':'Matutino','V':'Vespertino','NLMV':'Nocturno LMV','NMJV':'Nocturno MJV','JD':'Jornada Diurna','JN':'Jornada Nocturna'};
+  const turnoLabels={'M':'Matutino','V':'Vespertino','NLMV':'Nocturno LMV','NMJV':'Nocturno MJV','JD':'Jornada Diurna','JN':'Jornada Nocturna'};
+  const turnoLabel=turnoLabels[turnoEntrega]||turnoEntrega;
 
-  // Snapshot actual de camas
-  const snapshotActual=allRows.map(r=>({
-    id:r.id, numero_cama:r.numero_cama, nombre_paciente:r.nombre_paciente,
-    servicio:r.servicio, manejo_conjunto:r.manejo_conjunto,
-    cedula:r.cedula, tipo_dh:r.tipo_dh, edad:r.edad,
-    fecha_ingreso:r.fecha_ingreso, diagnostico:r.diagnostico, sexo:r.sexo
-  }));
-
-  // Buscar corte anterior del mismo tipo
-  const{data:corteAnterior}=await db.from('cortes_enfermeria')
-    .select('*').eq('tipo','hospital')
-    .order('created_at',{ascending:false}).limit(1).maybeSingle();
-
-  // Calcular movimientos comparando snapshots
-  const serviciosHosp=['MI','Cx','TyO','GyO','Pedia','UCI'];
+  // Recibo = todos los pacientes actuales en camas
+  const ocupadas=allRows.filter(r=>r.nombre_paciente);
+  const serviciosHosp=SERVICIOS_TABLERO;
   const movimientos={};
   serviciosHosp.forEach(sv=>{movimientos[sv]={recibo:0,ingresos:0,egresos:0};});
 
-  if(corteAnterior?.snapshot){
-    const snapAnterior=corteAnterior.snapshot;
-    const camasAnterior=new Map(snapAnterior.map(c=>[c.id,c]));
+  // Recibo: pacientes actuales por servicio
+  ocupadas.forEach(r=>{
+    const sv=r.servicio||r.manejo_conjunto||'MI';
+    const svKey=serviciosHosp.includes(sv)?sv:'MI';
+    if(movimientos[svKey]) movimientos[svKey].recibo++;
+  });
 
-    allRows.forEach(r=>{
-      const sv=r.servicio||r.manejo_conjunto||'otro';
-      const svKey=serviciosHosp.includes(sv)?sv:(sv.startsWith('UCI')?'UCI':'MI');
-      const anterior=camasAnterior.get(r.id);
-
-      if(!movimientos[svKey]) return;
-
-      // Recibo = pacientes que estaban en la cama anterior
-      if(anterior?.nombre_paciente && r.nombre_paciente && anterior.nombre_paciente===r.nombre_paciente){
-        movimientos[svKey].recibo++;
-      }
-      // Ingresos = camas que ahora tienen paciente pero antes no (o paciente diferente)
-      if(r.nombre_paciente && (!anterior?.nombre_paciente || anterior.nombre_paciente!==r.nombre_paciente)){
-        movimientos[svKey].ingresos++;
-      }
-    });
-
-    // Egresos = pacientes que estaban antes y ya no están
-    snapAnterior.forEach(ant=>{
-      if(!ant.nombre_paciente)return;
-      const actual=allRows.find(r=>r.id===ant.id);
-      if(!actual?.nombre_paciente || actual.nombre_paciente!==ant.nombre_paciente){
-        const sv=ant.servicio||ant.manejo_conjunto||'MI';
-        const svKey=serviciosHosp.includes(sv)?sv:'MI';
-        if(movimientos[svKey]) movimientos[svKey].egresos++;
-      }
-    });
-  } else {
-    // Primer corte: recibo = todos los pacientes actuales
-    allRows.filter(r=>r.nombre_paciente).forEach(r=>{
+  // Ingresos: pacientes que NO estaban en snapshot anterior del turno
+  const snapSet=new Set(snapshotAnterior);
+  ocupadas.forEach(r=>{
+    if(!snapSet.has(r.id)){
       const sv=r.servicio||r.manejo_conjunto||'MI';
       const svKey=serviciosHosp.includes(sv)?sv:'MI';
-      if(movimientos[svKey]) movimientos[svKey].recibo++;
-    });
-  }
-
-  // Guardar snapshot en Supabase
-  await db.from('cortes_enfermeria').insert({
-    tipo:'hospital', turno:turnoEntrega, fecha_corte:fecha,
-    hora_corte:new Date().toTimeString().split(' ')[0],
-    realizado_nombre:currentUser?.nombre||'',
-    snapshot:snapshotActual, movimientos
+      if(movimientos[svKey]) movimientos[svKey].ingresos++;
+    }
   });
 
-  // Actualizar tablero en movimientos_turno
-  const ops=[];
+  // Egresos: contados en memoria (darAltaEnfermeria los incrementa)
   serviciosHosp.forEach(sv=>{
-    const mov=movimientos[sv]||{recibo:0,ingresos:0,egresos:0};
-    const existing=tableroData[`${sv}_${turnoEntrega}`];
-    const payload={fecha,turno:turnoEntrega,servicio:sv,recibo:mov.recibo,ingresos:mov.ingresos,egresos:mov.egresos,entrego:mov.recibo+mov.ingresos-mov.egresos};
-    if(existing) ops.push(db.from('movimientos_turno').update(payload).eq('id',existing.id));
-    else ops.push(db.from('movimientos_turno').insert(payload));
+    movimientos[sv].egresos=(turnoEgresos[sv]||0);
   });
-  await Promise.all(ops);
-  await loadAll();
+
+  // Actualizar tablero visual
+  const entregaKey=turnoEntrega;
+  serviciosHosp.forEach(sv=>{
+    tableroData[`${sv}_${entregaKey}`]={
+      recibo:movimientos[sv].recibo,
+      ingresos:movimientos[sv].ingresos,
+      egresos:movimientos[sv].egresos,
+    };
+  });
+  renderTablero();
 
   closeCorteModal();
-  // Generar reporte imprimible
-  generarReporteCorte(turnoEntrega, turnoLabel[turnoEntrega]||turnoEntrega, fecha, movimientos, snapshotActual);
+
+  // Descargar CSV
+  descargarCSVHosp(ocupadas, turnoLabel, fecha);
+
+  // Generar PDF
+  setTimeout(()=>generarReporteCorte(turnoEntrega, turnoLabel, fecha, movimientos), 600);
+
+  // Resetear contadores para próximo turno
+  turnoIngresos={}; turnoEgresos={};
+  snapshotAnterior=allRows.filter(r=>r.nombre_paciente).map(r=>r.id);
 }
 
-function generarReporteCorte(turno, turnoLabel, fecha, movimientos, snapshot){
+function descargarCSVHosp(ocupadas, turno, fecha){
+  const headers=['Cama','Servicio','Nombre','Cédula','Tipo DH','Edad','Sexo','Fecha Ingreso','DEH','Diagnóstico','VVP/Infusiones','Antibióticos','Cuidados Especiales','Pendientes'];
+  const bom='\ufeff';
+  const rows=ocupadas.map(r=>{
+    const e=enfData[r.id]||{};
+    const deh=calcDEH(r.fecha_ingreso)??'';
+    return [r.numero_cama,r.servicio||'',`"${(r.nombre_paciente||'').replace(/"/g,'""')}"`,
+      r.cedula||'',r.tipo_dh||'',r.edad||'',r.sexo||'',r.fecha_ingreso||'',deh,
+      `"${(r.diagnostico||'').replace(/"/g,'""')}"`,
+      `"${(e.infusiones||'').replace(/"/g,'""')}"`,
+      `"${(e.antibioticos||'').replace(/"/g,'""')}"`,
+      `"${(e.cuidados_especiales||'').replace(/"/g,'""')}"`,
+      `"${(e.pendientes||'').replace(/"/g,'""')}"`,
+    ].join(',');
+  });
+  const csv=bom+[headers.join(','),...rows].join('\r\n');
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  a.download=`corte_hospital_${turno.replace(/ /g,'_')}_${fecha}.csv`;
+  a.click();
+}
+
+function generarReporteCorte(turno, turnoLabel, fecha, movimientos){
   const ocupadas=allRows.filter(r=>r.nombre_paciente);
-  const disponibles=allRows.filter(r=>!r.nombre_paciente);
-  const serviciosHosp=['MI','Cx','TyO','GyO','Pedia','UCI'];
+  const serviciosHosp=SERVICIOS_TABLERO;
 
   const movRows=serviciosHosp.map(sv=>{
     const m=movimientos[sv]||{recibo:0,ingresos:0,egresos:0};
@@ -830,50 +853,44 @@ function generarReporteCorte(turno, turnoLabel, fecha, movimientos, snapshot){
     const e=enfData[r.id]||{};
     const deh=calcDEH(r.fecha_ingreso);
     return `<tr>
-      <td style="font-weight:700;white-space:nowrap;">${r.numero_cama}</td>
-      <td style="font-size:10px;">${r.servicio||''}</td>
+      <td style="font-weight:700;">${r.numero_cama}</td>
+      <td>${r.servicio||''}</td>
       <td style="font-weight:600;">${r.nombre_paciente||''}</td>
-      <td style="font-size:10px;">${r.cedula||''}</td>
+      <td>${r.cedula||''}</td>
       <td style="text-align:center;">${r.tipo_dh||''}</td>
       <td style="text-align:center;">${r.edad||''}</td>
       <td style="text-align:center;">${r.sexo||''}</td>
       <td style="text-align:center;font-weight:${deh>10?'700':'400'};color:${deh>10?'#A32D2D':'#111'};">${deh??''}</td>
-      <td style="font-size:9px;color:#555;">${r.diagnostico||''}</td>
-      <td style="font-size:9px;">${e.infusiones||''}</td>
-      <td style="font-size:9px;">${e.antibioticos||''}</td>
-      <td style="font-size:9px;">${e.cuidados_especiales||''}</td>
-      <td style="font-size:9px;">${e.pendientes||''}</td>
+      <td style="color:#555;">${r.diagnostico||''}</td>
+      <td>${e.infusiones||''}</td>
+      <td>${e.antibioticos||''}</td>
+      <td>${e.cuidados_especiales||''}</td>
+      <td>${e.pendientes||''}</td>
     </tr>`;
   }).join('');
 
   const win=window.open('','_blank','width=1200,height=900');
   win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
-  <title>Corte — ${turnoLabel} ${fecha}</title>
-  <style>
-    body{font-family:Arial,sans-serif;font-size:10px;margin:14px;color:#111;}
-    h2{font-size:13px;margin:0 0 2px;}h3{font-size:11px;margin:0 0 8px;color:#555;}
-    .encab{display:flex;justify-content:space-between;margin-bottom:10px;border-bottom:2px solid #185FA5;padding-bottom:6px;}
-    .stats{display:flex;gap:16px;margin-bottom:10px;}
-    .stat{background:#F1EFE8;padding:4px 12px;border-radius:4px;text-align:center;}
-    .stat .n{font-size:18px;font-weight:700;color:#185FA5;}.stat .l{font-size:9px;color:#555;}
-    .section{margin-bottom:12px;}
-    .section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#185FA5;margin-bottom:4px;padding-bottom:2px;border-bottom:1px solid #185FA5;}
-    table{width:100%;border-collapse:collapse;font-size:9px;}
-    th{background:#7B1C3E;color:#fff;padding:4px 5px;text-align:left;}
-    th.center{text-align:center;}
-    td{padding:3px 5px;border-bottom:1px solid #E5E5E0;vertical-align:top;}
-    tr:nth-child(even) td{background:#F8F7F4;}
-    .firmas{margin-top:24px;display:flex;gap:60px;}
-    .firma{text-align:center;flex:1;border-top:1px solid #000;padding-top:3px;font-size:9px;}
-    @media print{body{margin:6px;}}
-  </style></head><body>
+  <title>Corte Enfermería Hospital — ${turnoLabel} ${fecha}</title>
+  <style>body{font-family:Arial,sans-serif;font-size:10px;margin:14px;color:#111;}
+  h2{font-size:13px;margin:0 0 2px;}h3{font-size:11px;margin:0 0 6px;color:#555;}
+  .encab{display:flex;justify-content:space-between;margin-bottom:10px;border-bottom:2px solid #7B1C3E;padding-bottom:6px;}
+  .stats{display:flex;gap:14px;margin-bottom:10px;}
+  .stat{background:#F5EBF0;padding:4px 12px;border-radius:4px;text-align:center;}
+  .stat .n{font-size:18px;font-weight:700;color:#7B1C3E;}.stat .l{font-size:9px;color:#555;}
+  .sec{margin-bottom:12px;}
+  .sec-t{font-size:11px;font-weight:700;text-transform:uppercase;color:#7B1C3E;margin-bottom:4px;border-bottom:1px solid #7B1C3E;padding-bottom:2px;}
+  table{width:100%;border-collapse:collapse;font-size:9px;}
+  th{background:#7B1C3E;color:#fff;padding:4px 5px;text-align:left;}
+  td{padding:3px 5px;border-bottom:1px solid #E5E5E0;vertical-align:top;}
+  tr:nth-child(even) td{background:#F8F7F4;}
+  .firmas{margin-top:24px;display:flex;gap:60px;}
+  .firma{text-align:center;flex:1;border-top:1px solid #000;padding-top:3px;font-size:9px;}
+  @media print{body{margin:6px;}}</style></head><body>
   <div class="encab">
-    <div>
-      <h2>Clínica Hospital Dr. Miguel Trejo Ochoa</h2>
-      <h3>Corte de Enfermería — Hospitalización</h3>
-    </div>
+    <div><h2>Clínica Hospital Dr. Miguel Trejo Ochoa</h2><h3>Corte de Enfermería — Hospitalización</h3></div>
     <div style="text-align:right;font-size:10px;">
-      <div><b>Turno entregado:</b> ${turnoLabel}</div>
+      <div><b>Turno:</b> ${turnoLabel}</div>
       <div><b>Fecha:</b> ${fecha}</div>
       <div><b>Hora:</b> ${new Date().toLocaleTimeString('es-MX')}</div>
       <div><b>Elaboró:</b> ${currentUser?.nombre||''}</div>
@@ -882,37 +899,18 @@ function generarReporteCorte(turno, turnoLabel, fecha, movimientos, snapshot){
   <div class="stats">
     <div class="stat"><div class="n">${allRows.length}</div><div class="l">Total camas</div></div>
     <div class="stat"><div class="n" style="color:#854F0B;">${ocupadas.length}</div><div class="l">Ocupadas</div></div>
-    <div class="stat"><div class="n" style="color:#3B6D11;">${disponibles.length}</div><div class="l">Disponibles</div></div>
+    <div class="stat"><div class="n" style="color:#3B6D11;">${allRows.length-ocupadas.length}</div><div class="l">Disponibles</div></div>
   </div>
-
-  <div class="section">
-    <div class="section-title">Movimientos del turno por servicio</div>
-    <table>
-      <thead><tr>
-        <th>Servicio</th>
-        <th class="center">Recibo</th>
-        <th class="center">Ingresos</th>
-        <th class="center">Egresos</th>
-        <th class="center">Entrego</th>
-      </tr></thead>
-      <tbody>${movRows}</tbody>
-    </table>
-  </div>
-
-  <div class="section">
-    <div class="section-title">Censo de pacientes al momento del corte</div>
-    <table>
-      <thead><tr>
-        <th>Cama</th><th>Serv.</th><th>Nombre</th><th>Cédula</th>
-        <th class="center">Tipo DH</th><th class="center">Edad</th><th class="center">S</th>
-        <th class="center">DEH</th><th>Diagnóstico</th>
-        <th>VVP/Inf.</th><th>Antibióticos</th>
-        <th>Cuidados Esp.</th><th>Pendientes</th>
-      </tr></thead>
-      <tbody>${pacRows}</tbody>
-    </table>
-  </div>
-
+  <div class="sec"><div class="sec-t">Movimientos del turno por servicio</div>
+    <table><thead><tr><th>Servicio</th><th style="text-align:center;">Recibo</th><th style="text-align:center;">Ingresos</th><th style="text-align:center;">Egresos</th><th style="text-align:center;">Entrego</th></tr></thead>
+    <tbody>${movRows}</tbody></table></div>
+  <div class="sec"><div class="sec-t">Censo al momento del corte (${ocupadas.length} pacientes)</div>
+    <table><thead><tr>
+      <th>Cama</th><th>Serv.</th><th>Nombre</th><th>Cédula</th>
+      <th style="text-align:center;">Tipo</th><th style="text-align:center;">Edad</th><th style="text-align:center;">S</th>
+      <th style="text-align:center;">DEH</th><th>Diagnóstico</th>
+      <th>VVP/Inf.</th><th>Antibióticos</th><th>Cuidados Esp.</th><th>Pendientes</th>
+    </tr></thead><tbody>${pacRows}</tbody></table></div>
   <div class="firmas">
     <div class="firma">Firma Jefa de Enfermería que entrega</div>
     <div class="firma">Firma Jefa de Enfermería que recibe</div>
@@ -922,8 +920,6 @@ function generarReporteCorte(turno, turnoLabel, fecha, movimientos, snapshot){
   win.document.close();
 }
 
-// ── HACER CORTE (legacy - now calls openCorteModal) ──
-function hacerCorte(){ openCorteModal(); }
 
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeCorteModal();}});
 document.getElementById('modal-overlay').addEventListener('click',e=>{if(e.target===document.getElementById('modal-overlay'))closeModal();});
@@ -955,5 +951,23 @@ document.getElementById('corte-overlay').addEventListener('click',e=>{if(e.targe
   </div>
 </div>
 
+
+<!-- MODAL CONFIRMACIÓN CAMBIO DE TURNO -->
+<div class="modal-overlay" id="turno-confirm-overlay">
+  <div class="modal" style="max-width:420px;">
+    <div class="modal-title">⚠️ Cambiar de turno</div>
+    <div style="font-size:13px;color:var(--texto);margin-bottom:8px;">
+      Estás a punto de cambiar al turno <b id="turno-confirm-nuevo"></b>.
+    </div>
+    <div style="background:#FFF9E6;border:1px solid #f59e0b;border-radius:var(--radio);padding:10px 12px;font-size:12px;color:#854F0B;margin-bottom:16px;">
+      Al cambiar de turno, se reinicia el conteo de ingresos y egresos del censo.<br/>
+      <b>Se sugiere hacer corte antes de cambiar de turno.</b>
+    </div>
+    <div class="modal-footer" style="justify-content:space-between;">
+      <button class="btn btn-sm" onclick="regresarCambioTurno()">← Regresar</button>
+      <button class="btn btn-sm btn-primary" onclick="aceptarCambioTurno()">Aceptar cambio</button>
+    </div>
+  </div>
+</div>
 </body>
 </html>
