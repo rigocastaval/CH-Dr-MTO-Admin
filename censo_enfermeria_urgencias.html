@@ -300,11 +300,6 @@ const AREAS_URG=['Urgencias','Pediátrico','Toco/Qx'];
       if(lh)lh.style.display='none';
       if(lu)lu.style.display='none';
     }
-    // Auto-activar turno Matutino por defecto (sin bloquear censo)
-    turnoActivo = 'M';
-    cortePendiente = true;
-    const btnM = document.getElementById('tb-M');
-    if(btnM) btnM.classList.add('active');
     await loadAll();
     // Snapshot inicial = pacientes al momento de entrar
     snapshotTurno = allRows.filter(r=>r.nombre_paciente).map(r=>r.id);
@@ -368,6 +363,7 @@ function setTurno(t, btn){
     return;
   }
   turnoActivo = t;
+  currentTurno = t;  // sincronizar para saveRow/updateField
   cortePendiente = true;
   // Snapshot: pacientes actuales en camas al iniciar el turno
   snapshotTurno = allRows.filter(r=>r.nombre_paciente).map(r=>r.id);
@@ -454,6 +450,13 @@ function taCell(val, rowId, field){
     onchange="updateField('${rowId}','${field}',this.value)"
     oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"
     >${display}</textarea>`;
+}
+
+function triClass(t){
+  if(t==='Rojo') return 'triaje-R';
+  if(t==='Naranja') return 'triaje-N';
+  if(t==='Amarillo') return 'triaje-A';
+  return 'triaje-V';
 }
 
 function renderCenso(){
@@ -913,51 +916,6 @@ async function registrarEnfEgreso(motivo, fecha, camaHosp){
 }
 
 // ── MODAL ASIGNAR CAMA VACÍA (igual que censo urgencias) ──
-let asignarCamaId=null;
-
-function openAsignarModal(camaId){
-  asignarCamaId=camaId;
-  const cama=allRows.find(r=>r.id===camaId);
-  document.getElementById('asig-cama').value=cama?.numero_cama||'';
-  document.getElementById('asig-nombre').value='';
-  document.getElementById('asig-cedula').value='';
-  document.getElementById('asig-tipo').value='';
-  document.getElementById('asig-edad').value='';
-  document.getElementById('asig-sexo').value='';
-  document.getElementById('asig-servicio').value='';
-  document.getElementById('asig-triaje').value='Verde';
-  document.getElementById('asig-ingreso').value=new Date().toISOString().split('T')[0];
-  document.getElementById('asig-dx').value='';
-  document.getElementById('asig-overlay').classList.add('open');
-}
-function closeAsignarModal(){document.getElementById('asig-overlay').classList.remove('open');asignarCamaId=null;}
-
-async function saveAsignarModal(){
-  const nombre=document.getElementById('asig-nombre').value.trim();
-  if(!nombre){showToast('El nombre es obligatorio','error');return;}
-  const payload={
-    nombre_paciente: nombre,
-    cedula:          document.getElementById('asig-cedula').value.trim()||null,
-    tipo_dh:         document.getElementById('asig-tipo').value||null,
-    edad:            parseInt(document.getElementById('asig-edad').value)||null,
-    sexo:            document.getElementById('asig-sexo').value||null,
-    servicio:        document.getElementById('asig-servicio').value||null,
-    triaje:          document.getElementById('asig-triaje').value||'Verde',
-    fecha_ingreso:   document.getElementById('asig-ingreso').value||null,
-    diagnostico:     document.getElementById('asig-dx').value.trim()||null,
-    ventilador:false, aislado:false, caso_riesgo:false,
-  };
-  const{error}=await db.from('camas_urgencias').update(payload).eq('id',asignarCamaId);
-  if(error){showToast('Error: '+error.message,'error');return;}
-  showToast('Paciente asignado','success');
-  closeAsignarModal();
-  await loadAll();
-}
-
-function vincularDesdeAdmisionAsig(){
-  closeAsignarModal();
-  openVincularAdmision(asignarCamaId);
-}
 
 function hacerCorte(){
   if(!turnoActivo){
@@ -1091,7 +1049,7 @@ function hacerCorte(){
       <div class="firma">Firma Jefa de Enfermería que recibe</div>
     </div>
     <script>window.onload=()=>window.print();<\/script>
-    </body></html>\`);
+    </body></html>`);
     win.document.close();
   }, 600);
 
@@ -1404,9 +1362,7 @@ async function registrarEgresoUrg(motivo,fecha,camaHosp){
     cedula:null,tipo_dh:null,edad:null,fecha_ingreso:null,diagnostico:null,
     pendientes:null,triaje:null,ventilador:false,aislado:false,caso_riesgo:false};
   // Track egreso in session memory
-  const svEgr=allRows.find(r=>r.id===editingId)?.servicio||'Urgencias';
-  const svKeyEgr=AREAS_URG.includes(svEgr)?svEgr:'Urgencias';
-  turnoEgresos[svKeyEgr]=(turnoEgresos[svKeyEgr]||0)+1;
+  registrarEgreso(allRows.find(r=>r.id===editingId)?.servicio||'Urgencias');
 
   await db.from('camas_urgencias').update(limpio).eq('id',editingId);
   showToast(`Alta: ${motivo}`,'success');
@@ -1482,21 +1438,5 @@ document.addEventListener('DOMContentLoaded',()=>{
 
 
 <!-- MODAL CONFIRMACIÓN CAMBIO DE TURNO -->
-<div class="modal-overlay" id="turno-confirm-overlay">
-  <div class="modal" style="max-width:420px;">
-    <div class="modal-title">⚠️ Cambiar de turno</div>
-    <div style="font-size:13px;color:var(--texto);margin-bottom:8px;">
-      Estás a punto de cambiar al turno <b id="turno-confirm-nuevo"></b>.
-    </div>
-    <div style="background:#FFF9E6;border:1px solid #f59e0b;border-radius:var(--radio);padding:10px 12px;font-size:12px;color:#854F0B;margin-bottom:16px;">
-      Al cambiar de turno, se reinicia el conteo de ingresos y egresos del censo.<br/>
-      <b>Se sugiere hacer corte antes de cambiar de turno.</b>
-    </div>
-    <div class="modal-footer" style="justify-content:space-between;">
-      <button class="btn btn-sm" onclick="regresarCambioTurno()">← Regresar</button>
-      <button class="btn btn-sm btn-primary" onclick="aceptarCambioTurno()">Aceptar cambio</button>
-    </div>
-  </div>
-</div>
 </body>
 </html>
