@@ -232,6 +232,7 @@
               <th colspan="3" class="th-group-label">Líquidos</th>
               <th colspan="1" class="th-group-label">Medicamento</th>
               <th colspan="3" class="th-group-label">Evaluación / Notas</th>
+              <th colspan="4" class="th-group-label" style="background:#5A1229;color:#fff;">Quirófano</th>
               <th rowspan="2" style="min-width:44px;background:var(--bg);vertical-align:bottom;">Acc.</th>
             </tr>
             <tr>
@@ -252,6 +253,10 @@
               <th style="min-width:90px;" title="Interconsulta">Interconsulta</th>
               <th style="min-width:150px;" title="Cuidados Especiales">Cuidados Esp.</th>
               <th style="min-width:150px;" title="Pendientes / Obs. Alta">Pendientes</th>
+              <th style="min-width:70px;" title="Admisión">Admisión</th>
+              <th style="min-width:70px;" title="Quirófano">Quirófano</th>
+              <th style="min-width:80px;" title="Recuperación">Recuperación</th>
+              <th style="min-width:60px;" title="Labor">Labor</th>
             </tr>
           </thead>
           <tbody id="tbody">
@@ -383,37 +388,72 @@ function renderTableroHeaders(){
   const cols = getColumnasTablero();
   const thead = document.getElementById('tablero-thead');
   if(!thead) return;
+  const sections = ['Pacientes Adultos','Pacientes Pediátricos','Cuarto de Choque','Admisión','Quirófano','Recuperación','Labor'];
   thead.innerHTML = `
     <tr>
-      <th class="serv" rowspan="2">Área</th>
-      ${cols.map(c=>`<th colspan="3" class="th-group">${TURNO_LABELS[c]||c}</th>`).join('')}
+      <th class="serv" rowspan="2" style="background:var(--bg);color:var(--texto-2);">Servicios</th>
+      ${sections.map(s=>`<th colspan="${cols.length}" class="th-group">${s}</th>`).join('')}
     </tr>
-    <tr>${cols.map(()=>'<th>Recibo</th><th>Ingresos</th><th>Egresos</th>').join('')}</tr>`;
+    <tr>
+      ${sections.map(()=>cols.map(col=>`<th style="font-size:9px;min-width:36px;">${TURNO_LABELS[col]||col}</th>`).join('')).join('')}
+    </tr>`;
 }
 
 function renderTablero(){
   const cols = getColumnasTablero();
-  // Recibo del turno activo = pacientes actuales
-  const reciboPorArea = {};
-  AREAS_URG.forEach(a=>{ reciboPorArea[a]=0; });
-  allRows.filter(r=>r.nombre_paciente).forEach(r=>{
-    const a = AREAS_URG.includes(r.servicio)?r.servicio:'Urgencias';
-    reciboPorArea[a]++;
-  });
+  const ocupadas = allRows.filter(r=>r.nombre_paciente);
+  const snapSet = new Set(snapshotTurno);
 
-  const html = AREAS_URG.map(area=>{
-    const celdas = cols.map(col=>{
-      if(turnoActivo && col === turnoActivo){
-        // Turno activo: datos en tiempo real
-        return `<td>${reciboPorArea[area]||0}</td>
-                <td style="color:var(--verde);font-weight:600;">${(ingresosDelTurno[area]||0)}</td>
-                <td style="color:var(--rojo);font-weight:600;">${(egresosDelTurno[area]||0)}</td>`;
-      }
-      // Turnos anteriores: del historial
-      const h = (movimientosHistorial[col]||{})[area]||{recibo:0,ingresos:0,egresos:0};
-      return `<td>${h.recibo}</td><td>${h.ingresos}</td><td>${h.egresos}</td>`;
-    }).join('');
-    return `<tr><td class="serv-label">${area}</td>${celdas}</tr>`;
+  function val(col, skey){
+    const isActive = turnoActivo && col === turnoActivo;
+    if(!isActive){
+      // historial
+      return (movimientosHistorial[col]||{})[skey]||0;
+    }
+    // Adultos (>=18)
+    if(skey==='adultos_r') return ocupadas.filter(r=>(r.edad||0)>=18).length;
+    if(skey==='adultos_i') return [...ocupadas].filter(r=>(r.edad||0)>=18&&!snapSet.has(r.id)).length;
+    if(skey==='adultos_e') return egresosDelTurno['adultos']||0;
+    if(skey==='adultos_t') return val(col,'adultos_r')+val(col,'adultos_i')-val(col,'adultos_e');
+    // Pediátrico (<18)
+    if(skey==='ped_r') return ocupadas.filter(r=>(r.edad||0)<18).length;
+    if(skey==='ped_i') return [...ocupadas].filter(r=>(r.edad||0)<18&&!snapSet.has(r.id)).length;
+    if(skey==='ped_e') return egresosDelTurno['pediatrico']||0;
+    if(skey==='ped_t') return val(col,'ped_r')+val(col,'ped_i')-val(col,'ped_e');
+    // Choque
+    if(skey==='chq_r') return ocupadas.filter(r=>(r.numero_cama||'').toUpperCase().includes('CHOQUE')).length;
+    if(skey==='chq_i') return ingresosDelTurno['CHOQUE']||0;
+    if(skey==='chq_e') return egresosDelTurno['CHOQUE']||0;
+    if(skey==='chq_t') return val(col,'chq_r')+val(col,'chq_i')-val(col,'chq_e');
+    // Quirófano flags
+    const qmap={adm:'qx_admision',qx:'qx_quirofano',rec:'qx_recuperacion',lab:'qx_labor'};
+    for(const [pfx,field] of Object.entries(qmap)){
+      if(skey===pfx+'_r') return ocupadas.filter(r=>enfData[r.id]&&enfData[r.id][field]).length;
+      if(skey===pfx+'_i') return ingresosDelTurno[pfx]||0;
+      if(skey===pfx+'_e') return egresosDelTurno[pfx]||0;
+      if(skey===pfx+'_t') return val(col,pfx+'_r')+val(col,pfx+'_i')-val(col,pfx+'_e');
+    }
+    return 0;
+  }
+
+  // 4 filas × 7 secciones × nCols columnas
+  const secKeys = [
+    ['adultos_r','adultos_i','adultos_e','adultos_t'],
+    ['ped_r','ped_i','ped_e','ped_t'],
+    ['chq_r','chq_i','chq_e','chq_t'],
+    ['adm_r','adm_i','adm_e','adm_t'],
+    ['qx_r','qx_i','qx_e','qx_t'],
+    ['rec_r','rec_i','rec_e','rec_t'],
+    ['lab_r','lab_i','lab_e','lab_t'],
+  ];
+  const rowLabels = ['Recibo','Ingresos','Egresos','Entrego'];
+  const html = rowLabels.map((lbl,ri)=>{
+    const isEntrego = lbl==='Entrego';
+    const st = isEntrego?'font-weight:700;background:#F5EBF0;':'';
+    const celdas = secKeys.map(sec=>
+      cols.map(col=>`<td style="text-align:center;${st}">${val(col,sec[ri])}</td>`).join('')
+    ).join('');
+    return `<tr><td class="serv-label" style="${st}">${lbl}</td>${celdas}</tr>`;
   }).join('');
   document.getElementById('tablero-tbody').innerHTML = html;
 }
@@ -476,7 +516,7 @@ function renderCenso(){
         return `<tr data-id="${r.id}" data-cama="${r.numero_cama}"
           ondblclick="alert('Para iniciar a registrar, debe elegir un turno.')">
           <td class="col-cama" style="vertical-align:middle;opacity:.6;"><span class="cama-lbl">${r.numero_cama}</span></td>
-          <td colspan="${totalCols}" style="color:var(--texto-3);font-style:italic;font-size:11px;">— disponible —</td>
+          <td colspan="${totalCols+4}" style="color:var(--texto-3);font-style:italic;font-size:11px;">— disponible —</td>
           <td></td>
         </tr>`;
       }
@@ -484,7 +524,7 @@ function renderCenso(){
         ondragover="onDragOverEnf(event)" ondrop="onDropEnf(event)" ondragleave="this.classList.remove('drag-over-enf')"
         ondblclick="openModalById('${r.id}')" style="cursor:pointer;">
         <td class="col-cama" style="vertical-align:middle;"><span class="cama-lbl">${r.numero_cama}</span></td>
-        <td colspan="${totalCols}" style="color:var(--texto-3);font-style:italic;font-size:11px;">— disponible — <span style="font-size:10px;color:var(--azul);">doble clic para asignar</span></td>
+        <td colspan="${totalCols+4}" style="color:var(--texto-3);font-style:italic;font-size:11px;">— disponible — <span style="font-size:10px;color:var(--azul);">doble clic para asignar</span></td>
         <td><button class="btn btn-sm" onclick="event.stopPropagation();openModalById('${r.id}')">Asignar</button></td>
       </tr>`;
     }
@@ -521,13 +561,33 @@ function renderCenso(){
       <td class="editable" style="border-bottom:none;">${taCell(e.inter_consulta,r.id,'inter_consulta')}</td>
       <td class="editable" style="border-bottom:none;">${taCell(e.cuidados_especiales,r.id,'cuidados_especiales')}</td>
       <td class="editable" style="border-bottom:none;">${taCell(e.pendientes,r.id,'pendientes')}</td>
+      <td style="border-bottom:none;text-align:center;vertical-align:middle;">
+        <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:3px;justify-content:center;">
+          <input type="checkbox" ${e.qx_admision?'checked':''} onchange="updateField('${r.id}','qx_admision',this.checked);saveRow('${r.id}');"/>
+        </label>
+      </td>
+      <td style="border-bottom:none;text-align:center;vertical-align:middle;">
+        <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:3px;justify-content:center;">
+          <input type="checkbox" ${e.qx_quirofano?'checked':''} onchange="updateField('${r.id}','qx_quirofano',this.checked);saveRow('${r.id}');"/>
+        </label>
+      </td>
+      <td style="border-bottom:none;text-align:center;vertical-align:middle;">
+        <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:3px;justify-content:center;">
+          <input type="checkbox" ${e.qx_recuperacion?'checked':''} onchange="updateField('${r.id}','qx_recuperacion',this.checked);saveRow('${r.id}');"/>
+        </label>
+      </td>
+      <td style="border-bottom:none;text-align:center;vertical-align:middle;">
+        <label style="font-size:10px;cursor:pointer;display:flex;align-items:center;gap:3px;justify-content:center;">
+          <input type="checkbox" ${e.qx_labor?'checked':''} onchange="updateField('${r.id}','qx_labor',this.checked);saveRow('${r.id}');"/>
+        </label>
+      </td>
       <td style="vertical-align:middle;border-bottom:none;">
         <button class="save-row-btn" onclick="saveRow('${r.id}');event.stopPropagation();">💾</button>
       </td>
     </tr>
     <tr data-id="${r.id}" data-cama="${r.numero_cama}" class="dx-row"
       ondblclick="openModalById('${r.id}')" style="cursor:pointer;" title="Doble clic para editar">
-      <td colspan="${totalCols+1}"
+      <td colspan="${totalCols+5}"
         style="background:#F8F7F4;padding:4px 10px 6px;font-size:10px;line-height:1.5;white-space:normal;word-break:break-word;">
         <span style="display:inline-flex;flex-wrap:wrap;gap:10px;align-items:baseline;">
           <span><b style="color:var(--texto-3);font-size:9px;text-transform:uppercase;">Paciente:</b> <b style="color:var(--texto);">${r.nombre_paciente||''}</b></span>
