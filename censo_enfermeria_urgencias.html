@@ -214,7 +214,7 @@
 
     <!-- TABLA CENSO -->
     <div class="table-container">
-      <div id="censo-bloqueado-msg" style="display:block;background:#FFF9E6;border:1px solid #f59e0b;border-radius:var(--radio);padding:10px 16px;margin-bottom:8px;font-size:13px;color:#854F0B;font-weight:500;">
+      <div id="censo-bloqueado-msg" style="display:none;background:#FFF9E6;border:1px solid #f59e0b;border-radius:var(--radio);padding:10px 16px;margin-bottom:8px;font-size:13px;color:#854F0B;font-weight:500;">
         ⚠️ Para iniciar a registrar, debe elegir un turno.
       </div>
       <div class="table-toolbar">
@@ -300,12 +300,34 @@ const AREAS_URG=['Urgencias','Pediátrico','Toco/Qx'];
       if(lh)lh.style.display='none';
       if(lu)lu.style.display='none';
     }
+    // Auto-activar turno Matutino por defecto (sin bloquear censo)
+    turnoActivo = 'M';
+    cortePendiente = true;
+    const btnM = document.getElementById('tb-M');
+    if(btnM) btnM.classList.add('active');
     await loadAll();
+    // Snapshot inicial = pacientes al momento de entrar
+    snapshotTurno = allRows.filter(r=>r.nombre_paciente).map(r=>r.id);
   }catch(err){
     console.error('Init error:',err);
     document.getElementById('tbody').innerHTML='<tr><td colspan="20" style="text-align:center;padding:2rem;color:#c00">Error al cargar. Recarga la página.</td></tr>';
   }
 })();
+
+// ── ESTADO DEL TURNO ──────────────────────────────────────────────
+// null = sin turno seleccionado (bloqueado)
+// string = turno activo
+let turnoActivo = null;          // turno seleccionado actualmente
+let cortePendiente = false;      // true = hay turno activo sin corte
+let snapshotTurno = [];          // IDs de pacientes al iniciar el turno
+let ingresosDelTurno = {};       // {area: count} ingresos desde inicio de turno
+let egresosDelTurno = {};        // {area: count} egresos desde inicio de turno
+let movimientosHistorial = {};   // {turnoId: {area: {recibo,ingresos,egresos}}}
+
+const TURNO_LABELS = {
+  'M':'Matutino','V':'Vespertino','NLMV':'Noct. LMV','NMJV':'Noct. MJV',
+  'JD':'J. Diurna','JN':'J. Nocturna'
+};
 
 async function loadAll(){
   try{
@@ -329,20 +351,7 @@ async function loadAll(){
   }
 }
 
-// ── ESTADO DEL TURNO ──────────────────────────────────────────────
-// null = sin turno seleccionado (bloqueado)
-// string = turno activo
-let turnoActivo = null;          // turno seleccionado actualmente
-let cortePendiente = false;      // true = hay turno activo sin corte
-let snapshotTurno = [];          // IDs de pacientes al iniciar el turno
-let ingresosDelTurno = {};       // {area: count} ingresos desde inicio de turno
-let egresosDelTurno = {};        // {area: count} egresos desde inicio de turno
-let movimientosHistorial = {};   // {turnoId: {area: {recibo,ingresos,egresos}}}
 
-const TURNO_LABELS = {
-  'M':'Matutino','V':'Vespertino','NLMV':'Noct. LMV','NMJV':'Noct. MJV',
-  'JD':'J. Diurna','JN':'J. Nocturna'
-};
 
 // Columnas del tablero según tipo de turno
 function getColumnasTablero(){
