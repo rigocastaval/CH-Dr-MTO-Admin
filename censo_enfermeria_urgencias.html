@@ -1059,14 +1059,12 @@ function hacerCorte(){
       e.qx_labor?'✓':'',
     ].join(SEP);
   });
-  const csv = bom + [headers.join(SEP), ...csvRows].join('\r\n');
-  const aEl = document.createElement('a');
-  aEl.href = URL.createObjectURL(new Blob([csv],{type:'text/tab-separated-values;charset=utf-8;'}));
-  aEl.download = `corte_urgencias_enf_${turnoLabel.replace(/ /g,'_')}_${fecha}.tsv`;
-  aEl.click();
+  // ── Preparar TSV para descarga opcional ──────────────────────
+  const csvBlob = new Blob([bom + [headers.join(SEP), ...csvRows].join('\r\n')],{type:'text/tab-separated-values;charset=utf-8;'});
+  const csvUrl = URL.createObjectURL(csvBlob);
+  const csvFilename = `corte_urgencias_enf_${turnoLabel.replace(/ /g,'_')}_${fecha}.tsv`;
 
   // ── PDF ───────────────────────────────────────────────────────
-  // Tabla de movimientos en nuevo formato (filas: Recibo/Ingresos/Egresos/Entrego × 7 secciones × turnos)
   const sections = ['Pac. Adultos','Pac. Pediátrico','Cto. Choque','Admisión','Quirófano','Recuperación','Labor'];
   const turnosLabels = cols.map(col=> TURNO_LABELS[col]||col);
   const movHeaders = `<tr>
@@ -1117,27 +1115,31 @@ function hacerCorte(){
     </tr>`;
   }).join('');
 
-  // Filas completas del censo con todas las columnas de enfermería
   const enfVal = v => (v===false||v===null||v===undefined||v==='false') ? '' : String(v);
   const camaPDFRowsCompleto = todasLasCamas.map(r=>{
     const e = enfData[r.id]||{};
     const deh = r.nombre_paciente ? (calcDEH(r.fecha_ingreso)??'') : '';
     const qxStr = e.qx_admision?'Adm': e.qx_quirofano?'Qx': e.qx_recuperacion?'Rec': e.qx_labor?'Lab': '';
+    // Cédula/DH combinados
+    const cedDH = [r.cedula, r.tipo_dh].filter(Boolean).join('/');
+    // Edad con "años"
+    const edadStr = r.edad ? `${r.edad} años` : '';
+    // Sexo completo
+    const sexoStr = r.sexo==='M'?'Hombre': r.sexo==='F'?'Mujer': r.sexo||'';
     if(!r.nombre_paciente) return `<tr class="disponible">
       <td>${r.numero_cama}</td>
-      <td colspan="27" style="font-style:italic;text-align:center;">— disponible —</td>
+      <td colspan="25" style="font-style:italic;text-align:center;">— disponible —</td>
     </tr>`;
     return `<tr>
       <td>${r.numero_cama}</td>
-      <td style="text-align:center;">${r.triaje||''}</td>
       <td style="font-weight:600;white-space:nowrap;">${r.nombre_paciente||''}</td>
-      <td>${r.cedula||''}</td>
-      <td style="text-align:center;">${r.tipo_dh||''}</td>
-      <td style="text-align:center;">${r.edad||''}</td>
-      <td style="text-align:center;">${r.sexo||''}</td>
+      <td>${cedDH}</td>
+      <td style="text-align:center;">${edadStr}</td>
+      <td style="text-align:center;">${sexoStr}</td>
       <td style="text-align:center;white-space:nowrap;">${r.fecha_ingreso||''}</td>
       <td style="text-align:center;${deh>10?'font-weight:700;color:#c00;':''}">${deh}</td>
       <td>${r.diagnostico||''}</td>
+      <td>${enfVal(e.pendientes)}</td>
       <td style="text-align:center;">${enfVal(e.estudios_lab)}</td>
       <td style="text-align:center;">${enfVal(e.estudios_imagen)}</td>
       <td style="text-align:center;">${enfVal(e.hem_cu)}</td>
@@ -1154,101 +1156,26 @@ function hacerCorte(){
       <td>${enfVal(e.antibioticos)}</td>
       <td>${enfVal(e.inter_consulta)}</td>
       <td>${enfVal(e.cuidados_especiales)}</td>
-      <td>${enfVal(e.pendientes)}</td>
       <td style="text-align:center;font-weight:600;color:#5A1229;">${qxStr}</td>
     </tr>`;
   }).join('');
 
-  setTimeout(()=>{
-    const win = window.open('','_blank','width=1400,height=900');
-    win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
-    <title>Corte Enfermería Urgencias — ${turnoLabel} ${fecha}</title>
-    <style>
-      body{font-family:Arial;font-size:8px;margin:8px;color:#111;}
-      h2{font-size:12px;margin:0;}h3{font-size:10px;color:#555;margin:0 0 4px;}
-      .encab{display:flex;justify-content:space-between;border-bottom:2px solid #7B1C3E;padding-bottom:5px;margin-bottom:8px;}
-      .stats{display:flex;gap:10px;margin-bottom:8px;}
-      .stat{background:#F5EBF0;padding:3px 8px;border-radius:3px;text-align:center;}
-      .stat .n{font-size:13px;font-weight:700;color:#7B1C3E;}.stat .l{font-size:7px;color:#555;}
-      .sec{margin-bottom:10px;}
-      .sec-t{font-size:9px;font-weight:700;text-transform:uppercase;color:#7B1C3E;
-             border-bottom:1px solid #7B1C3E;padding-bottom:2px;margin-bottom:3px;}
-      table{width:100%;border-collapse:collapse;font-size:7px;}
-      th{background:#7B1C3E;color:#fff;padding:3px 3px;text-align:center;
-         border:1px solid #5A1229;font-size:7px;}
-      td{padding:2px 3px;border:1px solid #C8C6BC;vertical-align:top;}
-      tr:nth-child(even) td{background:#F8F7F4;}
-      .entrego td{background:#F5EBF0 !important;font-weight:700;}
-      .disponible td{color:#bbb;background:#fafafa !important;}
-      .firmas{margin-top:16px;display:flex;gap:60px;}
-      .firma{text-align:center;flex:1;border-top:1px solid #000;padding-top:3px;font-size:8px;}
-      @media print{
-        body{margin:4px;}
-        @page{size:landscape;margin:6mm;}
-      }
-    </style></head><body>
-    <div class="encab">
-      <div><h2>Clínica Hospital Dr. Miguel Trejo Ochoa</h2>
-           <h3>Corte Enfermería — Urgencias | ${turnoLabel} | ${fecha}</h3></div>
-      <div style="text-align:right;font-size:8px;">
-        <div><b>Hora:</b> ${new Date().toLocaleTimeString('es-MX')}</div>
-        <div><b>Elaboró:</b> ${currentUser?.nombre||''}</div>
-      </div>
-    </div>
-    <div class="stats">
-      <div class="stat"><div class="n">${todasLasCamas.length}</div><div class="l">Total camas</div></div>
-      <div class="stat"><div class="n" style="color:#854F0B;">${ocupadas.length}</div><div class="l">Ocupadas</div></div>
-      <div class="stat"><div class="n" style="color:#3B6D11;">${todasLasCamas.length-ocupadas.length}</div><div class="l">Disponibles</div></div>
-    </div>
 
-    <div class="sec">
-      <div class="sec-t">Movimientos urgencias por turno</div>
-      <table><thead>${movHeaders}</thead>
-      <tbody>${movDataRows}${entregoRow}</tbody></table>
-    </div>
+  // ── Mostrar diálogo de descarga ────────────────────────────────
+  document.getElementById('corte-dl-turno').textContent = turnoLabel;
+  document.getElementById('corte-dl-fecha').textContent = fecha;
+  // Store for dialog buttons
+  window._corteCsvUrl = csvUrl;
+  window._corteCsvFilename = csvFilename;
+  window._cortePdfData = {
+    turnoLabel, fecha, todasLasCamas_length: todasLasCamas.length,
+    ocupadas_length: ocupadas.length,
+    movHeaders, movDataRows, entregoRow, camaPDFRowsCompleto,
+    elaboro: currentUser?.nombre||''
+  };
+  document.getElementById('corte-dl-overlay').classList.add('open');
 
-    <div class="sec">
-      <div class="sec-t">Censo completo al corte — ${todasLasCamas.length} camas</div>
-      <table>
-        <thead>
-          <tr>
-            <th rowspan="2">Cama</th>
-            <th rowspan="2">Triaje</th>
-            <th rowspan="2">Nombre</th>
-            <th rowspan="2">Cédula</th>
-            <th rowspan="2">Tipo</th>
-            <th rowspan="2">Edad</th>
-            <th rowspan="2">S</th>
-            <th rowspan="2">Ingreso</th>
-            <th rowspan="2">DEH</th>
-            <th rowspan="2">Diagnóstico</th>
-            <th colspan="7">Procedimientos</th>
-            <th colspan="3">Respiratorio</th>
-            <th colspan="4">Líquidos / Med.</th>
-            <th colspan="3">Notas</th>
-            <th rowspan="2">Qx</th>
-          </tr>
-          <tr>
-            <th>Lab</th><th>Imagen</th><th>HemoCu</th><th>RX</th><th>Curac.</th><th>CVC</th><th>VVP/Inf</th>
-            <th>VM</th><th>CPAP</th><th>O₂</th>
-            <th>Sol.Par.</th><th>Gluc.</th><th>Diur.</th><th>Antibióticos</th>
-            <th>Interconsulta</th><th>Cuid.Esp.</th><th>Pendientes</th>
-          </tr>
-        </thead>
-        <tbody>${camaPDFRowsCompleto}</tbody>
-      </table>
-    </div>
-
-    <div class="firmas">
-      <div class="firma">Firma Jefa de Enfermería que entrega</div>
-      <div class="firma">Firma Jefa de Enfermería que recibe</div>
-    </div>
-    <script>window.onload=()=>window.print();<\/script>
-    </body></html>`);
-    win.document.close();
-  }, 600);
-
-  // ── Pasar Entrego → Recibo en historial, reset Ingresos/Egresos ─
+  // ── Pasar Entregosar Entrego → Recibo en historial, reset Ingresos/Egresos ─
   const turnoGuardado = turnoActivo;
   const histTurno = movimientosHistorial[turnoGuardado] || {};
   const sk = ['adultos','pediatrico','choque','adm','qx','rec','lab'];
@@ -1669,9 +1596,106 @@ function getEditButton(camaId){
   return `<button class="btn btn-sm" onclick="event.stopPropagation();openModalById('${camaId}')">Asignar</button>`;
 }
 
-document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeAltaModal();closeVincularAdmision();}});
+// ── FUNCIONES DEL DIÁLOGO DE DESCARGA ────────────────────────────
+function closeCorteDialog(){
+  document.getElementById('corte-dl-overlay').classList.remove('open');
+}
+
+function descargarcortePDF(){
+  const d = window._cortePdfData;
+  if(!d) return;
+  const win = window.open('','_blank','width=1400,height=900');
+  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
+    <title>Corte Enfermería Urgencias — ${d.turnoLabel} ${d.fecha}</title>
+    <style>
+      body{font-family:Arial;font-size:8px;margin:8px;color:#111;}
+      h2{font-size:12px;margin:0;}h3{font-size:10px;color:#555;margin:0 0 4px;}
+      .encab{display:flex;justify-content:space-between;border-bottom:2px solid #7B1C3E;padding-bottom:5px;margin-bottom:8px;}
+      .stats{display:flex;gap:10px;margin-bottom:8px;}
+      .stat{background:#F5EBF0;padding:3px 8px;border-radius:3px;text-align:center;}
+      .stat .n{font-size:14px;font-weight:700;color:#7B1C3E;}.stat .l{font-size:8px;color:#555;}
+      .sec{margin-bottom:10px;}
+      .sec-t{font-size:9px;font-weight:700;text-transform:uppercase;color:#7B1C3E;
+             border-bottom:1px solid #7B1C3E;padding-bottom:2px;margin-bottom:3px;}
+      table{width:100%;border-collapse:collapse;font-size:7.5px;}
+      th{background:#7B1C3E;color:#fff;padding:3px 4px;text-align:center;border:1px solid #5A1229;}
+      td{padding:2px 4px;border:1px solid #C8C6BC;vertical-align:top;}
+      tr:nth-child(even) td{background:#F8F7F4;}
+      .entrego td{background:#F5EBF0 !important;font-weight:700;}
+      .disponible td{color:#bbb;}
+      .firmas{margin-top:16px;display:flex;gap:60px;}
+      .firma{text-align:center;flex:1;border-top:1px solid #000;padding-top:3px;font-size:8px;}
+      @media print{body{margin:4px;} @page{size:landscape;margin:6mm;}}
+    </style></head><body>
+    <div class="encab">
+      <div><h2>Clínica Hospital Dr. Miguel Trejo Ochoa</h2>
+           <h3>Corte Enfermería — Urgencias | ${d.turnoLabel} | ${d.fecha}</h3></div>
+      <div style="text-align:right;font-size:8px;">
+        <div><b>Hora:</b> ${new Date().toLocaleTimeString('es-MX')}</div>
+        <div><b>Elaboró:</b> ${d.elaboro}</div>
+      </div>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="n">${d.todasLasCamas_length}</div><div class="l">Total camas</div></div>
+      <div class="stat"><div class="n" style="color:#854F0B;">${d.ocupadas_length}</div><div class="l">Ocupadas</div></div>
+      <div class="stat"><div class="n" style="color:#3B6D11;">${d.todasLasCamas_length-d.ocupadas_length}</div><div class="l">Disponibles</div></div>
+    </div>
+    <div class="sec">
+      <div class="sec-t">Movimientos urgencias por turno</div>
+      <table><thead>${d.movHeaders}</thead><tbody>${d.movDataRows}${d.entregoRow}</tbody></table>
+    </div>
+    <div class="sec">
+      <div class="sec-t">Censo completo al corte — ${d.todasLasCamas_length} camas</div>
+      <table>
+        <thead>
+          <tr>
+            <th rowspan="2">Cama</th>
+            <th rowspan="2">Nombre</th>
+            <th rowspan="2">Cédula/DH</th>
+            <th rowspan="2">Edad</th>
+            <th rowspan="2">Sexo</th>
+            <th rowspan="2">Ingreso</th>
+            <th rowspan="2">DEH</th>
+            <th rowspan="2">Diagnóstico</th>
+            <th rowspan="2">Pendientes</th>
+            <th colspan="7">Procedimientos</th>
+            <th colspan="3">Respiratorio</th>
+            <th colspan="4">Líquidos / Med.</th>
+            <th colspan="2">Notas</th>
+            <th rowspan="2">Qx</th>
+          </tr>
+          <tr>
+            <th>Lab</th><th>Imagen</th><th>HemoCu</th><th>RX</th><th>Curac.</th><th>CVC</th><th>VVP/Inf</th>
+            <th>VM</th><th>CPAP</th><th>O₂</th>
+            <th>Sol.Par.</th><th>Gluc.</th><th>Diur.</th><th>Antibióticos</th>
+            <th>Interconsulta</th><th>Cuid.Esp.</th>
+          </tr>
+        </thead>
+        <tbody>${d.camaPDFRowsCompleto}</tbody>
+      </table>
+    </div>
+    <div class="firmas">
+      <div class="firma">Firma Jefa de Enfermería que entrega</div>
+      <div class="firma">Firma Jefa de Enfermería que recibe</div>
+    </div>
+    <script>window.onload=()=>window.print();<\/script>
+    </body></html>`);
+  win.document.close();
+  closeCorteDialog();
+}
+
+function descargarCorteExcel(){
+  if(!window._corteCsvUrl) return;
+  const a = document.createElement('a');
+  a.href = window._corteCsvUrl;
+  a.download = window._corteCsvFilename;
+  a.click();
+  closeCorteDialog();
+}
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();closeAltaModal();closeVincularAdmision();closeCorteDialog();}});
 document.addEventListener('DOMContentLoaded',()=>{
-  ['modal-overlay','alta-overlay','va-overlay'].forEach(id=>{
+  ['modal-overlay','alta-overlay','va-overlay','corte-dl-overlay'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) el.addEventListener('click',ev=>{if(ev.target===el)el.classList.remove('open');});
   });
@@ -1679,6 +1703,35 @@ document.addEventListener('DOMContentLoaded',()=>{
 </script>
 
 
-<!-- MODAL CONFIRMACIÓN CAMBIO DE TURNO -->
+<!-- MODAL CONFIRMACIÓN CAMBIO DE TURNO --><!-- MODAL DIÁLOGO DE DESCARGA DEL CORTE -->
+<div class="modal-overlay" id="corte-dl-overlay">
+  <div class="modal" style="max-width:380px;text-align:center;">
+    <div class="modal-title">📄 Corte generado</div>
+    <div style="font-size:13px;color:var(--texto-2);margin-bottom:4px;">
+      Turno: <b id="corte-dl-turno"></b> &nbsp;|&nbsp; Fecha: <b id="corte-dl-fecha"></b>
+    </div>
+    <div style="font-size:12px;color:var(--texto-3);margin-bottom:20px;">
+      Elige el formato para descargar:
+    </div>
+    <div style="display:flex;gap:12px;justify-content:center;margin-bottom:16px;">
+      <button class="btn" style="flex:1;flex-direction:column;gap:6px;padding:16px 12px;background:#FEF2F2;border-color:#FCA5A5;"
+        onclick="descargarcortePDF()">
+        <span style="font-size:24px;">📋</span>
+        <span style="font-size:12px;font-weight:600;color:#7B1C3E;">PDF</span>
+        <span style="font-size:10px;color:#888;">Para imprimir</span>
+      </button>
+      <button class="btn" style="flex:1;flex-direction:column;gap:6px;padding:16px 12px;background:#F0FFF4;border-color:#86EFAC;"
+        onclick="descargarCorteExcel()">
+        <span style="font-size:24px;">📊</span>
+        <span style="font-size:12px;font-weight:600;color:#166534;">Excel</span>
+        <span style="font-size:10px;color:#888;">Archivo .tsv</span>
+      </button>
+    </div>
+    <button class="btn btn-sm" onclick="closeCorteDialog()" style="width:100%;justify-content:center;">
+      Cerrar sin descargar
+    </button>
+  </div>
+</div>
+
 </body>
 </html>

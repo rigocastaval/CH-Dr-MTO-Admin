@@ -426,7 +426,8 @@ function renderTablero(){
     <tr class="total-row"><td class="serv-label" style="color:var(--azul);font-weight:700;">TOTAL</td>${totRow}</tr>`;
 }
 
-
+async function loadAll(){
+  try{
   const[hospRes, enfRes, tabRes]= await Promise.all([
     db.from('camas_hospitalizacion').select('*').order('sort_order',{ascending:true}),
     db.from('censo_enfermeria_hospital').select('*').eq('fecha',currentFecha),
@@ -441,6 +442,10 @@ function renderTablero(){
   renderTableroHeaders();
   renderTablero();
   renderCenso();
+  }catch(err){
+    console.error('loadAll error:',err);
+    document.getElementById('tbody').innerHTML='<tr><td colspan="30" style="text-align:center;padding:2rem;color:#c00">Error de conexión. Recarga la página.</td></tr>';
+  }
 }
 
 // ── CENSO ENFERMERÍA ──
