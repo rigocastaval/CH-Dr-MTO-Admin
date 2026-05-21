@@ -232,7 +232,7 @@
               <th colspan="3" class="th-group-label">Líquidos</th>
               <th colspan="1" class="th-group-label">Medicamento</th>
               <th colspan="3" class="th-group-label">Evaluación / Notas</th>
-              <th colspan="4" class="th-group-label" style="background:#5A1229;color:#fff;">Quirófano</th>
+              <th colspan="1" class="th-group-label" style="background:#5A1229;color:#fff;">Qx</th>
               <th rowspan="2" style="min-width:44px;background:var(--bg);vertical-align:bottom;">Acc.</th>
             </tr>
             <tr>
@@ -253,10 +253,7 @@
               <th style="min-width:90px;" title="Interconsulta">Interconsulta</th>
               <th style="min-width:150px;" title="Cuidados Especiales">Cuidados Esp.</th>
               <th style="min-width:150px;" title="Pendientes / Obs. Alta">Pendientes</th>
-              <th style="min-width:70px;" title="Admisión">Admisión</th>
-              <th style="min-width:70px;" title="Quirófano">Quirófano</th>
-              <th style="min-width:80px;" title="Recuperación">Recuperación</th>
-              <th style="min-width:60px;" title="Labor">Labor</th>
+              <th style="min-width:70px;" title="Admisión Qx">Admisión</th>
             </tr>
           </thead>
           <tbody id="tbody">
@@ -346,6 +343,7 @@ async function loadAll(){
     renderTableroHeaders();
     renderTablero();
     renderCenso();
+    renderQxVirtualRows();
   }catch(err){
     console.error('loadAll error:',err);
     document.getElementById('tbody').innerHTML='<tr><td colspan="20" style="text-align:center;padding:2rem;color:#c00">Error de conexión.</td></tr>';
@@ -491,7 +489,7 @@ async function setQx(camaId, field, checked){
   // Actualizar checkboxes en el DOM sin re-renderizar todo
   const row = document.querySelector(`tr[data-id="${camaId}"]`);
   if(row){
-    const checks = row.querySelectorAll('input[type="checkbox"][title="Admisión"],input[type="checkbox"][title="Quirófano"],input[type="checkbox"][title="Recuperación"],input[type="checkbox"][title="Labor"]');
+    const checks = row.querySelectorAll('input[type="checkbox"][title="Admisión Qx"]');
     checks.forEach(cb=>{ cb.checked = enfData[camaId]['qx_'+{Admisión:'admision',Quirófano:'quirofano',Recuperación:'recuperacion',Labor:'labor'}[cb.title]]; });
   }
   await saveRow(camaId);
@@ -587,7 +585,7 @@ function renderCenso(){
         <span class="drag-handle-enf">⠿</span>
         <span class="cama-lbl">${r.numero_cama}</span>
       </td>
-      <td colspan="${totalCols+5}"
+      <td colspan="${totalCols+1}"
         style="padding:4px 10px 4px;font-size:10px;line-height:1.5;white-space:normal;word-break:break-word;border-bottom:none;">
         <span style="display:inline-flex;flex-wrap:wrap;gap:10px;align-items:baseline;">
           <span><b style="color:var(--texto-3);font-size:9px;text-transform:uppercase;">Paciente:</b> <b style="color:var(--texto);">${r.nombre_paciente||''}</b></span>
@@ -627,16 +625,7 @@ function renderCenso(){
       <td class="editable">${taCell(e.cuidados_especiales,r.id,'cuidados_especiales')}</td>
       <td class="editable">${taCell(e.pendientes,r.id,'pendientes')}</td>
       <td style="text-align:center;vertical-align:middle;">
-        <input type="checkbox" title="Admisión" ${e.qx_admision?'checked':''} onchange="setQx('${r.id}','qx_admision',this.checked)"/>
-      </td>
-      <td style="text-align:center;vertical-align:middle;">
-        <input type="checkbox" title="Quirófano" ${e.qx_quirofano?'checked':''} onchange="setQx('${r.id}','qx_quirofano',this.checked)"/>
-      </td>
-      <td style="text-align:center;vertical-align:middle;">
-        <input type="checkbox" title="Recuperación" ${e.qx_recuperacion?'checked':''} onchange="setQx('${r.id}','qx_recuperacion',this.checked)"/>
-      </td>
-      <td style="text-align:center;vertical-align:middle;">
-        <input type="checkbox" title="Labor" ${e.qx_labor?'checked':''} onchange="setQx('${r.id}','qx_labor',this.checked)"/>
+        <input type="checkbox" title="Admisión Qx" ${e.qx_admision?'checked':''} onchange="setQx('${r.id}','qx_admision',this.checked)"/>
       </td>
       <td style="vertical-align:middle;">
         <button class="save-row-btn" onclick="saveRow('${r.id}');event.stopPropagation();">💾</button>
@@ -1237,6 +1226,32 @@ function hacerCorte(){
 
 </script>
 
+<!-- SECCIÓN QUIRÓFANO / RECUPERACIÓN / LABOR (filas virtuales) -->
+<div id="qx-virtual-section" style="display:none;margin:16px 0;background:var(--surface);border-radius:var(--radio);border:1px solid #C8C6BC;overflow:hidden;">
+  <div style="background:#5A1229;color:#fff;padding:8px 14px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;">
+    🔪 Quirófano — Pacientes en proceso
+  </div>
+  <div style="overflow-x:auto;">
+    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+      <thead>
+        <tr style="background:#F5EBF0;">
+          <th style="padding:6px 8px;text-align:left;border-bottom:1px solid #C8C6BC;white-space:nowrap;">Destino</th>
+          <th style="padding:6px 8px;text-align:left;border-bottom:1px solid #C8C6BC;">Nombre</th>
+          <th style="padding:6px 8px;text-align:left;border-bottom:1px solid #C8C6BC;">Cédula</th>
+          <th style="padding:6px 8px;text-align:center;border-bottom:1px solid #C8C6BC;">Tipo DH</th>
+          <th style="padding:6px 8px;text-align:center;border-bottom:1px solid #C8C6BC;">Edad</th>
+          <th style="padding:6px 8px;text-align:center;border-bottom:1px solid #C8C6BC;">Sexo</th>
+          <th style="padding:6px 8px;text-align:center;border-bottom:1px solid #C8C6BC;">Ingreso</th>
+          <th style="padding:6px 8px;text-align:left;border-bottom:1px solid #C8C6BC;">Diagnóstico</th>
+          <th style="padding:6px 8px;text-align:center;border-bottom:1px solid #C8C6BC;">Hora</th>
+          <th style="padding:6px 8px;border-bottom:1px solid #C8C6BC;"></th>
+        </tr>
+      </thead>
+      <tbody id="qx-virtual-tbody"></tbody>
+    </table>
+  </div>
+</div>
+
 <!-- ═══════════════════════════════════════════════════════════════
      MODALES — todos al mismo nivel, ninguno anidado dentro de otro
      ═══════════════════════════════════════════════════════════════ -->
@@ -1326,6 +1341,15 @@ function hacerCorte(){
       <button class="btn" style="justify-content:flex-start;gap:8px;border-left:4px solid var(--texto-3);" onclick="selectAlta('Defunción')">🕊️ Defunción</button>
       <button class="btn" style="justify-content:flex-start;gap:8px;border-left:4px solid var(--naranja);" onclick="selectAlta('Traslado a otra unidad')">🚑 Traslado a otra unidad</button>
       <button class="btn" style="justify-content:flex-start;gap:8px;border-left:4px solid var(--azul);" onclick="selectAlta('Hospitalización')">🏨 Hospital</button>
+      <button class="btn" style="justify-content:flex-start;gap:8px;border-left:4px solid #5A1229;" onclick="showQxOpts()">🔪 Quirófano</button>
+    </div>
+    <!-- Sub-opciones Quirófano -->
+    <div id="alta-opts-qx" style="display:none;flex-direction:column;gap:8px;">
+      <div style="font-size:12px;font-weight:600;color:#5A1229;margin-bottom:4px;">🔪 Selecciona destino en Quirófano:</div>
+      <button class="btn" style="justify-content:flex-start;gap:8px;border-left:4px solid #5A1229;" onclick="selectAlta('Qx')">🔪 Quirófano (Qx)</button>
+      <button class="btn" style="justify-content:flex-start;gap:8px;border-left:4px solid #854F0B;" onclick="selectAlta('Recu')">💊 Recuperación (Recu)</button>
+      <button class="btn" style="justify-content:flex-start;gap:8px;border-left:4px solid #166534;" onclick="selectAlta('Labor')">🤰 Labor (Labor)</button>
+      <button class="btn btn-sm" onclick="hideQxOpts()">← Volver</button>
     </div>
     <div id="alta-form-normal" style="display:none;">
       <div class="field"><label>Motivo de alta</label><input type="text" id="alta-motivo" readonly style="background:var(--bg);"/></div>
@@ -1457,11 +1481,94 @@ async function saveModal(){
   }
 }
 
-// ── MODAL ALTA (idéntico a urgencias.html) ──
+// ── QUIRÓFANO: filas virtuales al final del censo ─────────────────
+// Guarda los pacientes en Qx/Recu/Labor (sin cama física)
+let qxVirtualRows = []; // [{id_original, nombre, cedula, tipo_dh, edad, sexo, fecha_ingreso, diagnostico, destino}]
+
+async function moverAQuirofano(destino){
+  const row = allRows.find(r=>r.id===editingId);
+  if(!row){closeAltaModal();return;}
+
+  // Guardar en lista virtual
+  qxVirtualRows.push({
+    id_original: row.id,
+    numero_cama: row.numero_cama,
+    nombre: row.nombre_paciente,
+    cedula: row.cedula,
+    tipo_dh: row.tipo_dh,
+    edad: row.edad,
+    sexo: row.sexo,
+    fecha_ingreso: row.fecha_ingreso,
+    diagnostico: row.diagnostico,
+    destino: destino,
+    hora: new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}),
+  });
+
+  // Registrar como egreso (sale de urgencias)
+  const _rowAlt=allRows.find(r=>r.id===editingId);
+  registrarEgreso(_rowAlt?.servicio||'Urgencias', _rowAlt?.edad);
+
+  // Limpiar la cama en Supabase
+  const limpio={nombre_paciente:null,sexo:null,servicio:null,manejo_conjunto:null,
+    cedula:null,tipo_dh:null,edad:null,fecha_ingreso:null,diagnostico:null,
+    pendientes:null,triaje:null,ventilador:false,aislado:false,caso_riesgo:false};
+  await db.from('camas_urgencias').update(limpio).eq('id',editingId);
+
+  showToast(`Paciente enviado a ${destino}`,'success');
+  closeAltaModal(); closeModal();
+  await loadAll();
+  renderQxVirtualRows();
+}
+
+function renderQxVirtualRows(){
+  const container = document.getElementById('qx-virtual-section');
+  if(!container) return;
+  if(!qxVirtualRows.length){
+    container.style.display='none';
+    return;
+  }
+  container.style.display='block';
+  const colores = {Qx:'#5A1229',Recu:'#854F0B',Labor:'#166534'};
+  const labels = {Qx:'Quirófano',Recu:'Recuperación',Labor:'Labor'};
+  container.querySelector('#qx-virtual-tbody').innerHTML = qxVirtualRows.map((p,idx)=>`
+    <tr>
+      <td style="font-weight:700;white-space:nowrap;">
+        <span style="padding:2px 8px;border-radius:10px;font-size:10px;background:${colores[p.destino]||'#333'};color:#fff;">${labels[p.destino]||p.destino}</span>
+      </td>
+      <td style="font-weight:600;">${p.nombre||''}</td>
+      <td>${p.cedula||''}</td>
+      <td style="text-align:center;">${p.tipo_dh||''}</td>
+      <td style="text-align:center;">${p.edad||''}</td>
+      <td style="text-align:center;">${p.sexo||''}</td>
+      <td style="text-align:center;">${p.fecha_ingreso||''}</td>
+      <td>${p.diagnostico||''}</td>
+      <td style="text-align:center;color:var(--texto-3);font-size:10px;">${p.hora}</td>
+      <td style="text-align:center;">
+        <button class="btn btn-sm btn-danger" style="font-size:10px;padding:2px 6px;" onclick="quitarDeQx(${idx})">✕</button>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function quitarDeQx(idx){
+  if(!confirm('¿Quitar este paciente de la lista de Quirófano?')) return;
+  qxVirtualRows.splice(idx,1);
+  renderQxVirtualRows();
+}
+
+
+  document.getElementById('alta-opts-btns').style.display='none';
+  document.getElementById('alta-opts-qx').style.display='flex';
+}
+function hideQxOpts(){
+  document.getElementById('alta-opts-qx').style.display='none';
+  document.getElementById('alta-opts-btns').style.display='flex';
+}
 function openAltaModal(){
   document.getElementById('alta-form-normal').style.display='none';
   document.getElementById('alta-form-hospital').style.display='none';
   document.getElementById('alta-opts-btns').style.display='flex';
+  document.getElementById('alta-opts-qx').style.display='none';
   document.getElementById('alta-overlay').classList.add('open');
 }
 function closeAltaModal(){
@@ -1471,14 +1578,19 @@ function closeAltaModal(){
 function backToOpts(){
   document.getElementById('alta-form-normal').style.display='none';
   document.getElementById('alta-form-hospital').style.display='none';
+  document.getElementById('alta-opts-qx').style.display='none';
   document.getElementById('alta-opts-btns').style.display='flex';
 }
 function selectAlta(motivo){
   document.getElementById('alta-opts-btns').style.display='none';
+  document.getElementById('alta-opts-qx').style.display='none';
   if(motivo==='Hospitalización'){
     document.getElementById('alta-fecha-hosp').value=new Date().toISOString().split('T')[0];
     document.getElementById('alta-form-hospital').style.display='block';
     loadCamasHospital();
+  } else if(motivo==='Qx'||motivo==='Recu'||motivo==='Labor'){
+    // Mover paciente a fila virtual de Quirófano
+    moverAQuirofano(motivo);
   } else {
     document.getElementById('alta-motivo').value=motivo;
     document.getElementById('alta-fecha').value=new Date().toISOString().split('T')[0];
