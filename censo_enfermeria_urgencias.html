@@ -406,13 +406,11 @@ function renderTableroHeaders(){
   const thead = document.getElementById('tablero-thead');
   if(!thead) return;
   const sections = ['Pacientes Adultos','Pacientes Pediátricos','Cuarto de Choque','Admisión','Quirófano','Recuperación','Labor'];
+  // Una sola fila de encabezado — sin fila de nombres de turno
   thead.innerHTML = `
     <tr>
-      <th class="serv" rowspan="2" style="background:var(--bg);color:var(--texto-2);">Servicios</th>
+      <th class="serv" style="background:var(--bg);color:var(--texto-2);">Servicios</th>
       ${sections.map(s=>`<th colspan="${cols.length}" class="th-group">${s}</th>`).join('')}
-    </tr>
-    <tr>
-      ${sections.map(()=>cols.map(col=>`<th style="font-size:9px;min-width:36px;">${TURNO_LABELS[col]||col}</th>`).join('')).join('')}
     </tr>`;
 }
 
@@ -500,19 +498,25 @@ async function setQx(camaId, field, checked){
 }
 
 // Llamar cuando ingresa un paciente nuevo
-function registrarIngreso(servicio){
+function registrarIngreso(servicio, edad){
   if(!turnoActivo) return;
+  // Contar en el grupo específico (choque, admision, etc.)
   const a = AREAS_URG.includes(servicio)?servicio:'Urgencias';
   ingresosDelTurno[a] = (ingresosDelTurno[a]||0)+1;
+  // Contar SIEMPRE también en adultos o pediátrico según edad
+  const grupoEdad = (edad!==null && edad!==undefined && Number(edad)<18) ? 'pediatrico' : 'adultos';
+  ingresosDelTurno[grupoEdad] = (ingresosDelTurno[grupoEdad]||0)+1;
   renderTablero();
 }
 
-// Llamar cuando se da de alta un paciente
 // NOTA: cuenta el egreso SIEMPRE, aunque el paciente haya ingresado en el mismo turno
-function registrarEgreso(servicio){
+function registrarEgreso(servicio, edad){
   if(!turnoActivo) return;
   const a = AREAS_URG.includes(servicio)?servicio:'Urgencias';
   egresosDelTurno[a] = (egresosDelTurno[a]||0)+1;
+  // Contar también en adultos o pediátrico según edad
+  const grupoEdad = (edad!==null && edad!==undefined && Number(edad)<18) ? 'pediatrico' : 'adultos';
+  egresosDelTurno[grupoEdad] = (egresosDelTurno[grupoEdad]||0)+1;
   renderTablero();
 }
 
@@ -1004,7 +1008,8 @@ async function registrarEnfEgreso(motivo, fecha, camaHosp){
     pendientes:null,triaje:null,ventilador:false,aislado:false,caso_riesgo:false};
   await db.from('camas_urgencias').update(limpio).eq('id',editingUrgId);
   // Track egreso
-  registrarEgreso(allRows.find(r=>r.id===editingUrgId)?.servicio||'Urgencias');
+  const _rowUrg=allRows.find(r=>r.id===editingUrgId);
+  registrarEgreso(_rowUrg?.servicio||'Urgencias', _rowUrg?.edad);
   showToast(`Alta: ${motivo}`,'success');
   closeEnfAltaModal(); editingUrgId=null;
   await loadAll();
@@ -1094,9 +1099,9 @@ function hacerCorte(){
   const sections = ['Pac. Adultos','Pac. Pediátrico','Cto. Choque','Admisión','Quirófano','Recuperación','Labor'];
   const turnosLabels = cols.map(col=> TURNO_LABELS[col]||col);
   const movHeaders = `<tr>
-    <th rowspan="2">Servicios</th>
+    <th>Servicios</th>
     ${sections.map(s=>`<th colspan="${cols.length}">${s}</th>`).join('')}
-  </tr><tr>${sections.map(()=>turnosLabels.map(t=>`<th style="font-size:8px;">${t}</th>`).join('')).join('')}</tr>`;
+  </tr>`;
 
   function getMovVal(col,skey){
     const h = movimientosHistorial[col]||{};
@@ -1446,7 +1451,7 @@ async function saveModal(){
     // Si la cama estaba vacía antes y ahora tiene paciente → es un ingreso
     const camaAntes=allRows.find(r=>r.id===editingId);
     if(!camaAntes?.nombre_paciente && p.nombre_paciente){
-      registrarIngreso(p.servicio||'Urgencias');
+      registrarIngreso(p.servicio||'Urgencias', p.edad);
     }
     showToast('Guardado','success');closeModal();await loadAll();
   }
@@ -1552,7 +1557,8 @@ async function registrarEgresoUrg(motivo,fecha,camaHosp){
     cedula:null,tipo_dh:null,edad:null,fecha_ingreso:null,diagnostico:null,
     pendientes:null,triaje:null,ventilador:false,aislado:false,caso_riesgo:false};
   // Track egreso in session memory
-  registrarEgreso(allRows.find(r=>r.id===editingId)?.servicio||'Urgencias');
+  const _rowAlt=allRows.find(r=>r.id===editingId);
+  registrarEgreso(_rowAlt?.servicio||'Urgencias', _rowAlt?.edad);
 
   await db.from('camas_urgencias').update(limpio).eq('id',editingId);
   showToast(`Alta: ${motivo}`,'success');
