@@ -201,10 +201,7 @@
 
     <!-- TABLERO -->
     <div class="tablero">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
-        <div class="tablero-title" style="margin:0;">📋 Movimientos Urgencias por turno</div>
-        <button class="btn btn-sm" onclick="nuevoDia()" style="font-size:11px;background:#185FA5;color:#fff;border-color:#185FA5;" title="Pone en ceros los turnos anteriores, conserva el turno actual">🔄 Nuevo día</button>
-      </div>
+      <div class="tablero-title">📋 Movimientos Urgencias por turno</div>
       <div style="overflow-x:auto;">
         <table class="tablero-table">
           <thead id="tablero-thead">
@@ -989,13 +986,6 @@ async function registrarEnfEgreso(motivo, fecha, camaHosp){
 
 // ── MODAL ASIGNAR CAMA VACÍA (igual que censo urgencias) ──
 
-function nuevoDia(){
-  if(!confirm('¿Confirmas iniciar nuevo día? Se pondrán en ceros los turnos anteriores.')) return;
-  movimientosHistorial = {};
-  renderTablero();
-  showToast('Historial de turnos reiniciado','success');
-}
-
 function hacerCorte(){
   if(!turnoActivo){
     alert('Para iniciar a registrar, debe elegir un turno.');
@@ -1127,29 +1117,80 @@ function hacerCorte(){
     </tr>`;
   }).join('');
 
+  // Filas completas del censo con todas las columnas de enfermería
+  const enfVal = v => (v===false||v===null||v===undefined||v==='false') ? '' : String(v);
+  const camaPDFRowsCompleto = todasLasCamas.map(r=>{
+    const e = enfData[r.id]||{};
+    const deh = r.nombre_paciente ? (calcDEH(r.fecha_ingreso)??'') : '';
+    const qxStr = e.qx_admision?'Adm': e.qx_quirofano?'Qx': e.qx_recuperacion?'Rec': e.qx_labor?'Lab': '';
+    if(!r.nombre_paciente) return `<tr class="disponible">
+      <td>${r.numero_cama}</td>
+      <td colspan="27" style="font-style:italic;text-align:center;">— disponible —</td>
+    </tr>`;
+    return `<tr>
+      <td>${r.numero_cama}</td>
+      <td style="text-align:center;">${r.triaje||''}</td>
+      <td style="font-weight:600;white-space:nowrap;">${r.nombre_paciente||''}</td>
+      <td>${r.cedula||''}</td>
+      <td style="text-align:center;">${r.tipo_dh||''}</td>
+      <td style="text-align:center;">${r.edad||''}</td>
+      <td style="text-align:center;">${r.sexo||''}</td>
+      <td style="text-align:center;white-space:nowrap;">${r.fecha_ingreso||''}</td>
+      <td style="text-align:center;${deh>10?'font-weight:700;color:#c00;':''}">${deh}</td>
+      <td>${r.diagnostico||''}</td>
+      <td style="text-align:center;">${enfVal(e.estudios_lab)}</td>
+      <td style="text-align:center;">${enfVal(e.estudios_imagen)}</td>
+      <td style="text-align:center;">${enfVal(e.hem_cu)}</td>
+      <td style="text-align:center;">${enfVal(e.rx)}</td>
+      <td style="text-align:center;">${enfVal(e.curaciones)}</td>
+      <td style="text-align:center;">${enfVal(e.cvc)}</td>
+      <td>${enfVal(e.infusiones)}</td>
+      <td style="text-align:center;">${enfVal(e.ventilador_mecanico)}</td>
+      <td style="text-align:center;">${enfVal(e.cpap)}</td>
+      <td style="text-align:center;">${enfVal(e.oxigeno_litros)}</td>
+      <td>${enfVal(e.soluciones_parenterales)}</td>
+      <td style="text-align:center;">${enfVal(e.glucosa)}</td>
+      <td style="text-align:center;">${enfVal(e.diuresis)}</td>
+      <td>${enfVal(e.antibioticos)}</td>
+      <td>${enfVal(e.inter_consulta)}</td>
+      <td>${enfVal(e.cuidados_especiales)}</td>
+      <td>${enfVal(e.pendientes)}</td>
+      <td style="text-align:center;font-weight:600;color:#5A1229;">${qxStr}</td>
+    </tr>`;
+  }).join('');
+
   setTimeout(()=>{
-    const win = window.open('','_blank','width=1200,height=900');
+    const win = window.open('','_blank','width=1400,height=900');
     win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"/>
     <title>Corte Enfermería Urgencias — ${turnoLabel} ${fecha}</title>
-    <style>body{font-family:Arial;font-size:10px;margin:14px;color:#111;}
-    h2{font-size:13px;margin:0;}h3{font-size:11px;color:#555;margin:0 0 6px;}
-    .encab{display:flex;justify-content:space-between;border-bottom:2px solid #7B1C3E;padding-bottom:6px;margin-bottom:10px;}
-    .stats{display:flex;gap:12px;margin-bottom:10px;}
-    .stat{background:#F5EBF0;padding:4px 10px;border-radius:4px;text-align:center;}
-    .stat .n{font-size:16px;font-weight:700;color:#7B1C3E;}.stat .l{font-size:9px;color:#555;}
-    .sec{margin-bottom:12px;}
-    .sec-t{font-size:11px;font-weight:700;text-transform:uppercase;color:#7B1C3E;border-bottom:1px solid #7B1C3E;padding-bottom:2px;margin-bottom:4px;}
-    table{width:100%;border-collapse:collapse;font-size:9px;}
-    th{background:#7B1C3E;color:#fff;padding:4px 5px;text-align:left;}
-    td{padding:3px 5px;border-bottom:1px solid #E5E5E0;vertical-align:top;}
-    tr:nth-child(even) td{background:#F8F7F4;}
-    .firmas{margin-top:24px;display:flex;gap:60px;}
-    .firma{text-align:center;flex:1;border-top:1px solid #000;padding-top:3px;font-size:9px;}
-    @media print{body{margin:6px;}}</style></head><body>
+    <style>
+      body{font-family:Arial;font-size:8px;margin:8px;color:#111;}
+      h2{font-size:12px;margin:0;}h3{font-size:10px;color:#555;margin:0 0 4px;}
+      .encab{display:flex;justify-content:space-between;border-bottom:2px solid #7B1C3E;padding-bottom:5px;margin-bottom:8px;}
+      .stats{display:flex;gap:10px;margin-bottom:8px;}
+      .stat{background:#F5EBF0;padding:3px 8px;border-radius:3px;text-align:center;}
+      .stat .n{font-size:13px;font-weight:700;color:#7B1C3E;}.stat .l{font-size:7px;color:#555;}
+      .sec{margin-bottom:10px;}
+      .sec-t{font-size:9px;font-weight:700;text-transform:uppercase;color:#7B1C3E;
+             border-bottom:1px solid #7B1C3E;padding-bottom:2px;margin-bottom:3px;}
+      table{width:100%;border-collapse:collapse;font-size:7px;}
+      th{background:#7B1C3E;color:#fff;padding:3px 3px;text-align:center;
+         border:1px solid #5A1229;font-size:7px;}
+      td{padding:2px 3px;border:1px solid #C8C6BC;vertical-align:top;}
+      tr:nth-child(even) td{background:#F8F7F4;}
+      .entrego td{background:#F5EBF0 !important;font-weight:700;}
+      .disponible td{color:#bbb;background:#fafafa !important;}
+      .firmas{margin-top:16px;display:flex;gap:60px;}
+      .firma{text-align:center;flex:1;border-top:1px solid #000;padding-top:3px;font-size:8px;}
+      @media print{
+        body{margin:4px;}
+        @page{size:landscape;margin:6mm;}
+      }
+    </style></head><body>
     <div class="encab">
-      <div><h2>Clínica Hospital Dr. Miguel Trejo Ochoa</h2><h3>Corte Enfermería — Urgencias | ${turnoLabel}</h3></div>
-      <div style="text-align:right;font-size:10px;">
-        <div><b>Fecha:</b> ${fecha}</div>
+      <div><h2>Clínica Hospital Dr. Miguel Trejo Ochoa</h2>
+           <h3>Corte Enfermería — Urgencias | ${turnoLabel} | ${fecha}</h3></div>
+      <div style="text-align:right;font-size:8px;">
         <div><b>Hora:</b> ${new Date().toLocaleTimeString('es-MX')}</div>
         <div><b>Elaboró:</b> ${currentUser?.nombre||''}</div>
       </div>
@@ -1159,14 +1200,45 @@ function hacerCorte(){
       <div class="stat"><div class="n" style="color:#854F0B;">${ocupadas.length}</div><div class="l">Ocupadas</div></div>
       <div class="stat"><div class="n" style="color:#3B6D11;">${todasLasCamas.length-ocupadas.length}</div><div class="l">Disponibles</div></div>
     </div>
-    <div class="sec"><div class="sec-t">Movimientos urgencias por turno</div>
-      <table><thead>${movHeaders}</thead><tbody>${movDataRows}${entregoRow}</tbody></table></div>
-    <div class="sec"><div class="sec-t">Censo completo al corte (${todasLasCamas.length} camas)</div>
-      <table><thead><tr>
-        <th>Cama</th><th>Triaje</th><th>Nombre</th><th>Cédula</th>
-        <th>Edad</th><th>DEH</th><th>Diagnóstico</th>
-        <th>VVP/Inf.</th><th>Antibióticos</th><th>Cuidados Esp.</th><th>Quirófano</th>
-      </tr></thead><tbody>${camaPDFRows}</tbody></table></div>
+
+    <div class="sec">
+      <div class="sec-t">Movimientos urgencias por turno</div>
+      <table><thead>${movHeaders}</thead>
+      <tbody>${movDataRows}${entregoRow}</tbody></table>
+    </div>
+
+    <div class="sec">
+      <div class="sec-t">Censo completo al corte — ${todasLasCamas.length} camas</div>
+      <table>
+        <thead>
+          <tr>
+            <th rowspan="2">Cama</th>
+            <th rowspan="2">Triaje</th>
+            <th rowspan="2">Nombre</th>
+            <th rowspan="2">Cédula</th>
+            <th rowspan="2">Tipo</th>
+            <th rowspan="2">Edad</th>
+            <th rowspan="2">S</th>
+            <th rowspan="2">Ingreso</th>
+            <th rowspan="2">DEH</th>
+            <th rowspan="2">Diagnóstico</th>
+            <th colspan="7">Procedimientos</th>
+            <th colspan="3">Respiratorio</th>
+            <th colspan="4">Líquidos / Med.</th>
+            <th colspan="3">Notas</th>
+            <th rowspan="2">Qx</th>
+          </tr>
+          <tr>
+            <th>Lab</th><th>Imagen</th><th>HemoCu</th><th>RX</th><th>Curac.</th><th>CVC</th><th>VVP/Inf</th>
+            <th>VM</th><th>CPAP</th><th>O₂</th>
+            <th>Sol.Par.</th><th>Gluc.</th><th>Diur.</th><th>Antibióticos</th>
+            <th>Interconsulta</th><th>Cuid.Esp.</th><th>Pendientes</th>
+          </tr>
+        </thead>
+        <tbody>${camaPDFRowsCompleto}</tbody>
+      </table>
+    </div>
+
     <div class="firmas">
       <div class="firma">Firma Jefa de Enfermería que entrega</div>
       <div class="firma">Firma Jefa de Enfermería que recibe</div>
@@ -1175,6 +1247,21 @@ function hacerCorte(){
     </body></html>`);
     win.document.close();
   }, 600);
+
+  // ── Pasar Entrego → Recibo en historial, reset Ingresos/Egresos ─
+  const turnoGuardado = turnoActivo;
+  const histTurno = movimientosHistorial[turnoGuardado] || {};
+  const sk = ['adultos','pediatrico','choque','adm','qx','rec','lab'];
+  sk.forEach(s => {
+    const r = histTurno[s+'_r']||0;
+    const i = histTurno[s+'_i']||0;
+    const e = histTurno[s+'_e']||0;
+    histTurno[s+'_r'] = r + i - e;  // nuevo Recibo = Entrego anterior
+    histTurno[s+'_i'] = 0;
+    histTurno[s+'_e'] = 0;
+    histTurno[s+'_t'] = histTurno[s+'_r'];
+  });
+  movimientosHistorial[turnoGuardado] = histTurno;
 
   // ── Deseleccionar turno y bloquear censo ──────────────────────
   turnoActivo = null;
@@ -1189,7 +1276,6 @@ function hacerCorte(){
   showToast('Corte generado — archivo y PDF listos','success');
 }
 
-</script>
 </script>
 
 <!-- ═══════════════════════════════════════════════════════════════
