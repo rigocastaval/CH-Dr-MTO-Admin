@@ -485,49 +485,18 @@ function renderCenso(){
       </tr>`;
     }
 
-    // FILA 1: servicio + campos clínicos (sin nombre/cédula/edad/sexo — van abajo)
-    // FILA 2: información del paciente + diagnóstico en colspan completo
-    const totalCols=22; // reducido al quitar 4 columnas de la fila 1
+    // Fila 1: info del paciente (ARRIBA), Fila 2: campos clínicos (ABAJO)
+    const totalCols=22;
     return `
-    <tr data-id="${r.id}" data-cama="${r.numero_cama}" draggable="true"
-      ondragstart="onDragStartEnf(event)"
-      ondragover="onDragOverEnf(event)"
-      ondrop="onDropEnf(event)"
-      ondragleave="this.classList.remove('drag-over-enf')"
-      ondblclick="openModal('${r.id}')"
-      style="border-bottom:none;">
+    <tr data-id="${r.id}" data-cama="${r.numero_cama}"
+      class="dx-row" style="cursor:pointer;"
+      ondblclick="openModal('${r.id}')">
       <td class="col-cama" style="white-space:nowrap;vertical-align:middle;border-bottom:none;" rowspan="2">
         <span class="drag-handle-enf" title="Arrastrar">⠿</span>
         <span class="cama-lbl">${r.numero_cama}</span>
       </td>
-      <td style="vertical-align:middle;border-bottom:none;">${sp}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.estudios_lab,'',r.id,'estudios_lab')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.estudios_imagen,'',r.id,'estudios_imagen')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.hem_cu,'',r.id,'hem_cu')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.rx,'',r.id,'rx')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.curaciones,'',r.id,'curaciones')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.cvc,'',r.id,'cvc')}</td>
-      <td class="col-vvp editable" style="border-bottom:none;">${taCell(e.infusiones,'',r.id,'infusiones')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.ventilador_mecanico,'',r.id,'ventilador_mecanico')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.cpap,'',r.id,'cpap')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.oxigeno_litros,'',r.id,'oxigeno_litros')}</td>
-      <td class="col-sol editable" style="border-bottom:none;">${taCell(e.soluciones_parenterales,'',r.id,'soluciones_parenterales')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.glucosa,'',r.id,'glucosa')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.diuresis,'',r.id,'diuresis')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.lactancia,'',r.id,'lactancia')}</td>
-      <td class="col-abx editable" style="border-bottom:none;">${taCell(e.antibioticos,'',r.id,'antibioticos')}</td>
-      <td class="col-ic editable" style="border-bottom:none;">${taCell(e.inter_consulta,'',r.id,'inter_consulta')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.bano_general,'',r.id,'bano_general')}</td>
-      <td class="col-ce editable" style="border-bottom:none;">${taCell(e.cuidados_especiales,'',r.id,'cuidados_especiales')}</td>
-      <td class="col-pend editable" style="border-bottom:none;">${taCell(e.pendientes,'',r.id,'pendientes')}</td>
-      <td style="vertical-align:middle;border-bottom:none;">
-        <button class="save-row-btn" onclick="saveRow('${r.id}');event.stopPropagation();">💾</button>
-      </td>
-    </tr>
-    <tr data-id="${r.id}" data-cama="${r.numero_cama}"
-      class="dx-row" style="border-bottom:none;">
-      <td colspan="${totalCols-1}"
-        style="background:#F8F7F4;padding:4px 10px 6px 10px;font-size:10px;line-height:1.5;white-space:normal;word-break:break-word;">
+      <td colspan="${totalCols}"
+        style="padding:4px 10px 4px 10px;font-size:10px;line-height:1.5;white-space:normal;word-break:break-word;border-bottom:none;">
         <span style="display:inline-flex;flex-wrap:wrap;gap:12px;align-items:baseline;">
           <span><b style="color:var(--texto-3);font-size:9px;text-transform:uppercase;letter-spacing:.04em;">Paciente:</b> <b style="color:var(--texto);">${r.nombre_paciente||''}</b></span>
           <span><b style="color:var(--texto-3);font-size:9px;">Cédula:</b> <span style="font-family:'IBM Plex Mono',monospace;">${r.cedula||'—'}</span></span>
@@ -537,9 +506,40 @@ function renderCenso(){
           <span><b style="color:var(--texto-3);font-size:9px;">Ingreso:</b> ${r.fecha_ingreso?new Date(r.fecha_ingreso+'T00:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—'}</span>
           <span><b style="color:var(--texto-3);font-size:9px;">DEH:</b> <span style="font-weight:700;color:${calcDEH(r.fecha_ingreso)>10?'var(--rojo)':'var(--texto)'};">${calcDEH(r.fecha_ingreso)??'—'}</span></span>
         </span>
-        <div style="margin-top:3px;color:var(--texto-2);">
+        <div style="margin-top:2px;color:var(--texto-2);">
           <b style="color:var(--texto-3);font-size:9px;text-transform:uppercase;letter-spacing:.04em;">Dx:</b> ${r.diagnostico||'—'}
         </div>
+      </td>
+    </tr>
+    <tr data-id="${r.id}" data-cama="${r.numero_cama}" draggable="true"
+      ondragstart="onDragStartEnf(event)"
+      ondragover="onDragOverEnf(event)"
+      ondrop="onDropEnf(event)"
+      ondragleave="this.classList.remove('drag-over-enf')"
+      ondblclick="openModal('${r.id}')"
+      style="cursor:pointer;">
+      <td style="vertical-align:middle;">${sp}</td>
+      <td class="editable">${taCell(e.estudios_lab,'',r.id,'estudios_lab')}</td>
+      <td class="editable">${taCell(e.estudios_imagen,'',r.id,'estudios_imagen')}</td>
+      <td class="editable">${taCell(e.hem_cu,'',r.id,'hem_cu')}</td>
+      <td class="editable">${taCell(e.rx,'',r.id,'rx')}</td>
+      <td class="editable">${taCell(e.curaciones,'',r.id,'curaciones')}</td>
+      <td class="editable">${taCell(e.cvc,'',r.id,'cvc')}</td>
+      <td class="col-vvp editable">${taCell(e.infusiones,'',r.id,'infusiones')}</td>
+      <td class="editable">${taCell(e.ventilador_mecanico,'',r.id,'ventilador_mecanico')}</td>
+      <td class="editable">${taCell(e.cpap,'',r.id,'cpap')}</td>
+      <td class="editable">${taCell(e.oxigeno_litros,'',r.id,'oxigeno_litros')}</td>
+      <td class="col-sol editable">${taCell(e.soluciones_parenterales,'',r.id,'soluciones_parenterales')}</td>
+      <td class="editable">${taCell(e.glucosa,'',r.id,'glucosa')}</td>
+      <td class="editable">${taCell(e.diuresis,'',r.id,'diuresis')}</td>
+      <td class="editable">${taCell(e.lactancia,'',r.id,'lactancia')}</td>
+      <td class="col-abx editable">${taCell(e.antibioticos,'',r.id,'antibioticos')}</td>
+      <td class="col-ic editable">${taCell(e.inter_consulta,'',r.id,'inter_consulta')}</td>
+      <td class="editable">${taCell(e.bano_general,'',r.id,'bano_general')}</td>
+      <td class="col-ce editable">${taCell(e.cuidados_especiales,'',r.id,'cuidados_especiales')}</td>
+      <td class="col-pend editable">${taCell(e.pendientes,'',r.id,'pendientes')}</td>
+      <td style="vertical-align:middle;">
+        <button class="save-row-btn" onclick="saveRow('${r.id}');event.stopPropagation();">💾</button>
       </td>
     </tr>`;
   }).join('');

@@ -320,6 +320,7 @@ const AREAS_URG=['Urgencias','Pediátrico','Toco/Qx'];
 let turnoActivo = null;          // turno seleccionado actualmente
 let cortePendiente = false;      // true = hay turno activo sin corte
 let snapshotTurno = [];          // IDs de pacientes al iniciar el turno
+let reciboDelTurno = {};         // {skey: count} recibo ESTÁTICO al elegir turno
 let ingresosDelTurno = {};       // {area: count} ingresos desde inicio de turno
 let egresosDelTurno = {};        // {area: count} egresos desde inicio de turno
 let movimientosHistorial = {};   // {turnoId: {area: {recibo,ingresos,egresos}}}
@@ -374,6 +375,8 @@ function setTurno(t, btn){
   snapshotTurno = allRows.filter(r=>r.nombre_paciente).map(r=>r.id);
   ingresosDelTurno = {};
   egresosDelTurno = {};
+  // Recibo estático: captura el conteo en el momento de elegir turno
+  _capturarRecibo();
   // Activar botón
   document.querySelectorAll('.turno-btn').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
@@ -382,6 +385,20 @@ function setTurno(t, btn){
   renderTableroHeaders();
   renderTablero();
   renderCenso();
+}
+
+
+function _capturarRecibo(){
+  const ocupadas = allRows.filter(r=>r.nombre_paciente);
+  reciboDelTurno = {
+    adultos: ocupadas.filter(r=>(r.edad||0)>=18).length,
+    pediatrico: ocupadas.filter(r=>(r.edad||0)<18).length,
+    choque: ocupadas.filter(r=>(r.numero_cama||'').toUpperCase().includes('CHOQUE')).length,
+    adm: ocupadas.filter(r=>enfData[r.id]&&enfData[r.id].qx_admision).length,
+    qx:  ocupadas.filter(r=>enfData[r.id]&&enfData[r.id].qx_quirofano).length,
+    rec: ocupadas.filter(r=>enfData[r.id]&&enfData[r.id].qx_recuperacion).length,
+    lab: ocupadas.filter(r=>enfData[r.id]&&enfData[r.id].qx_labor).length,
+  };
 }
 
 function renderTableroHeaders(){
@@ -407,32 +424,40 @@ function renderTablero(){
   function val(col, skey){
     const isActive = turnoActivo && col === turnoActivo;
     if(!isActive){
-      // historial
       return (movimientosHistorial[col]||{})[skey]||0;
     }
-    // Adultos (>=18)
-    if(skey==='adultos_r') return ocupadas.filter(r=>(r.edad||0)>=18).length;
-    if(skey==='adultos_i') return [...ocupadas].filter(r=>(r.edad||0)>=18&&!snapSet.has(r.id)).length;
-    if(skey==='adultos_e') return egresosDelTurno['adultos']||0;
-    if(skey==='adultos_t') return val(col,'adultos_r')+val(col,'adultos_i')-val(col,'adultos_e');
-    // Pediátrico (<18)
-    if(skey==='ped_r') return ocupadas.filter(r=>(r.edad||0)<18).length;
-    if(skey==='ped_i') return [...ocupadas].filter(r=>(r.edad||0)<18&&!snapSet.has(r.id)).length;
-    if(skey==='ped_e') return egresosDelTurno['pediatrico']||0;
-    if(skey==='ped_t') return val(col,'ped_r')+val(col,'ped_i')-val(col,'ped_e');
-    // Choque
-    if(skey==='chq_r') return ocupadas.filter(r=>(r.numero_cama||'').toUpperCase().includes('CHOQUE')).length;
-    if(skey==='chq_i') return ingresosDelTurno['CHOQUE']||0;
-    if(skey==='chq_e') return egresosDelTurno['CHOQUE']||0;
-    if(skey==='chq_t') return val(col,'chq_r')+val(col,'chq_i')-val(col,'chq_e');
-    // Quirófano flags
-    const qmap={adm:'qx_admision',qx:'qx_quirofano',rec:'qx_recuperacion',lab:'qx_labor'};
-    for(const [pfx,field] of Object.entries(qmap)){
-      if(skey===pfx+'_r') return ocupadas.filter(r=>enfData[r.id]&&enfData[r.id][field]).length;
-      if(skey===pfx+'_i') return ingresosDelTurno[pfx]||0;
-      if(skey===pfx+'_e') return egresosDelTurno[pfx]||0;
-      if(skey===pfx+'_t') return val(col,pfx+'_r')+val(col,pfx+'_i')-val(col,pfx+'_e');
-    }
+    // ── Recibo: ESTÁTICO, capturado al elegir turno ──
+    if(skey==='adultos_r')   return reciboDelTurno['adultos']||0;
+    if(skey==='ped_r')       return reciboDelTurno['pediatrico']||0;
+    if(skey==='chq_r')       return reciboDelTurno['choque']||0;
+    if(skey==='adm_r')       return reciboDelTurno['adm']||0;
+    if(skey==='qx_r')        return reciboDelTurno['qx']||0;
+    if(skey==='rec_r')       return reciboDelTurno['rec']||0;
+    if(skey==='lab_r')       return reciboDelTurno['lab']||0;
+    // ── Ingresos: acumulados desde inicio de turno ──
+    if(skey==='adultos_i')   return ingresosDelTurno['adultos']||0;
+    if(skey==='ped_i')       return ingresosDelTurno['pediatrico']||0;
+    if(skey==='chq_i')       return ingresosDelTurno['CHOQUE']||0;
+    if(skey==='adm_i')       return ingresosDelTurno['adm']||0;
+    if(skey==='qx_i')        return ingresosDelTurno['qx']||0;
+    if(skey==='rec_i')       return ingresosDelTurno['rec']||0;
+    if(skey==='lab_i')       return ingresosDelTurno['lab']||0;
+    // ── Egresos: acumulados desde inicio de turno ──
+    if(skey==='adultos_e')   return egresosDelTurno['adultos']||0;
+    if(skey==='ped_e')       return egresosDelTurno['pediatrico']||0;
+    if(skey==='chq_e')       return egresosDelTurno['CHOQUE']||0;
+    if(skey==='adm_e')       return egresosDelTurno['adm']||0;
+    if(skey==='qx_e')        return egresosDelTurno['qx']||0;
+    if(skey==='rec_e')       return egresosDelTurno['rec']||0;
+    if(skey==='lab_e')       return egresosDelTurno['lab']||0;
+    // ── Entrego: pacientes ACTUALMENTE en camas (dinámico) ──
+    if(skey==='adultos_t')   return ocupadas.filter(r=>(r.edad||0)>=18).length;
+    if(skey==='ped_t')       return ocupadas.filter(r=>(r.edad||0)<18).length;
+    if(skey==='chq_t')       return ocupadas.filter(r=>(r.numero_cama||'').toUpperCase().includes('CHOQUE')).length;
+    if(skey==='adm_t')       return ocupadas.filter(r=>enfData[r.id]&&enfData[r.id].qx_admision).length;
+    if(skey==='qx_t')        return ocupadas.filter(r=>enfData[r.id]&&enfData[r.id].qx_quirofano).length;
+    if(skey==='rec_t')       return ocupadas.filter(r=>enfData[r.id]&&enfData[r.id].qx_recuperacion).length;
+    if(skey==='lab_t')       return ocupadas.filter(r=>enfData[r.id]&&enfData[r.id].qx_labor).length;
     return 0;
   }
 
@@ -551,53 +576,15 @@ function renderCenso(){
     const ing=r.fecha_ingreso?new Date(r.fecha_ingreso+'T00:00:00').toLocaleDateString('es-MX',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
 
     return `
-    <tr data-id="${r.id}" data-cama="${r.numero_cama}" draggable="true"
-      ondragstart="onDragStartEnf(event)" ondragover="onDragOverEnf(event)"
-      ondrop="onDropEnf(event)" ondragleave="this.classList.remove('drag-over-enf')"
+    <tr data-id="${r.id}" data-cama="${r.numero_cama}" class="dx-row"
       ondblclick="if(!turnoActivo){alert('Para iniciar a registrar, debe elegir un turno.');}else{openModalById('${r.id}');}"
-      style="border-bottom:none;cursor:pointer;" title="Doble clic para editar">
-      <td class="col-cama" style="vertical-align:middle;border-bottom:none;" rowspan="2">
+      style="cursor:pointer;" title="Doble clic para editar">
+      <td class="col-cama" style="white-space:nowrap;vertical-align:middle;border-bottom:none;" rowspan="2">
         <span class="drag-handle-enf">⠿</span>
         <span class="cama-lbl">${r.numero_cama}</span>
       </td>
-      <td style="vertical-align:middle;border-bottom:none;"><span class="${triClass(r.triaje)}">${r.triaje||''}</span></td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.estudios_lab,r.id,'estudios_lab')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.estudios_imagen,r.id,'estudios_imagen')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.hem_cu,r.id,'hem_cu')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.rx,r.id,'rx')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.curaciones,r.id,'curaciones')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.cvc,r.id,'cvc')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.infusiones,r.id,'infusiones')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.ventilador_mecanico,r.id,'ventilador_mecanico')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.cpap,r.id,'cpap')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.oxigeno_litros,r.id,'oxigeno_litros')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.soluciones_parenterales,r.id,'soluciones_parenterales')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.glucosa,r.id,'glucosa')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.diuresis,r.id,'diuresis')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.antibioticos,r.id,'antibioticos')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.inter_consulta,r.id,'inter_consulta')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.cuidados_especiales,r.id,'cuidados_especiales')}</td>
-      <td class="editable" style="border-bottom:none;">${taCell(e.pendientes,r.id,'pendientes')}</td>
-      <td style="border-bottom:none;text-align:center;vertical-align:middle;">
-        <input type="checkbox" title="Admisión" ${e.qx_admision?'checked':''} onchange="setQx('${r.id}','qx_admision',this.checked)"/>
-      </td>
-      <td style="border-bottom:none;text-align:center;vertical-align:middle;">
-        <input type="checkbox" title="Quirófano" ${e.qx_quirofano?'checked':''} onchange="setQx('${r.id}','qx_quirofano',this.checked)"/>
-      </td>
-      <td style="border-bottom:none;text-align:center;vertical-align:middle;">
-        <input type="checkbox" title="Recuperación" ${e.qx_recuperacion?'checked':''} onchange="setQx('${r.id}','qx_recuperacion',this.checked)"/>
-      </td>
-      <td style="border-bottom:none;text-align:center;vertical-align:middle;">
-        <input type="checkbox" title="Labor" ${e.qx_labor?'checked':''} onchange="setQx('${r.id}','qx_labor',this.checked)"/>
-      </td>
-      <td style="vertical-align:middle;border-bottom:none;">
-        <button class="save-row-btn" onclick="saveRow('${r.id}');event.stopPropagation();">💾</button>
-      </td>
-    </tr>
-    <tr data-id="${r.id}" data-cama="${r.numero_cama}" class="dx-row"
-      ondblclick="openModalById('${r.id}')" style="cursor:pointer;" title="Doble clic para editar">
       <td colspan="${totalCols+5}"
-        style="background:#F8F7F4;padding:4px 10px 6px;font-size:10px;line-height:1.5;white-space:normal;word-break:break-word;">
+        style="padding:4px 10px 4px;font-size:10px;line-height:1.5;white-space:normal;word-break:break-word;border-bottom:none;">
         <span style="display:inline-flex;flex-wrap:wrap;gap:10px;align-items:baseline;">
           <span><b style="color:var(--texto-3);font-size:9px;text-transform:uppercase;">Paciente:</b> <b style="color:var(--texto);">${r.nombre_paciente||''}</b></span>
           <span><b style="color:var(--texto-3);font-size:9px;">Cédula:</b> <span style="font-family:'IBM Plex Mono',monospace;">${r.cedula||'—'}</span></span>
@@ -607,9 +594,48 @@ function renderCenso(){
           <span><b style="color:var(--texto-3);font-size:9px;">Ingreso:</b> ${ing}</span>
           <span><b style="color:var(--texto-3);font-size:9px;">DEH:</b> <span style="font-weight:700;color:${deh>10?'var(--rojo)':'var(--texto)'};">${deh??'—'}</span></span>
         </span>
-        <div style="margin-top:3px;color:var(--texto-2);">
+        <div style="margin-top:2px;color:var(--texto-2);">
           <b style="color:var(--texto-3);font-size:9px;text-transform:uppercase;letter-spacing:.04em;">Dx:</b> ${r.diagnostico||'—'}
         </div>
+      </td>
+    </tr>
+    <tr data-id="${r.id}" data-cama="${r.numero_cama}" draggable="true"
+      ondragstart="onDragStartEnf(event)" ondragover="onDragOverEnf(event)"
+      ondrop="onDropEnf(event)" ondragleave="this.classList.remove('drag-over-enf')"
+      ondblclick="if(!turnoActivo){alert('Para iniciar a registrar, debe elegir un turno.');}else{openModalById('${r.id}');}"
+      style="cursor:pointer;">
+      <td style="vertical-align:middle;"><span class="${triClass(r.triaje)}">${r.triaje||''}</span></td>
+      <td class="editable">${taCell(e.estudios_lab,r.id,'estudios_lab')}</td>
+      <td class="editable">${taCell(e.estudios_imagen,r.id,'estudios_imagen')}</td>
+      <td class="editable">${taCell(e.hem_cu,r.id,'hem_cu')}</td>
+      <td class="editable">${taCell(e.rx,r.id,'rx')}</td>
+      <td class="editable">${taCell(e.curaciones,r.id,'curaciones')}</td>
+      <td class="editable">${taCell(e.cvc,r.id,'cvc')}</td>
+      <td class="editable">${taCell(e.infusiones,r.id,'infusiones')}</td>
+      <td class="editable">${taCell(e.ventilador_mecanico,r.id,'ventilador_mecanico')}</td>
+      <td class="editable">${taCell(e.cpap,r.id,'cpap')}</td>
+      <td class="editable">${taCell(e.oxigeno_litros,r.id,'oxigeno_litros')}</td>
+      <td class="editable">${taCell(e.soluciones_parenterales,r.id,'soluciones_parenterales')}</td>
+      <td class="editable">${taCell(e.glucosa,r.id,'glucosa')}</td>
+      <td class="editable">${taCell(e.diuresis,r.id,'diuresis')}</td>
+      <td class="editable">${taCell(e.antibioticos,r.id,'antibioticos')}</td>
+      <td class="editable">${taCell(e.inter_consulta,r.id,'inter_consulta')}</td>
+      <td class="editable">${taCell(e.cuidados_especiales,r.id,'cuidados_especiales')}</td>
+      <td class="editable">${taCell(e.pendientes,r.id,'pendientes')}</td>
+      <td style="text-align:center;vertical-align:middle;">
+        <input type="checkbox" title="Admisión" ${e.qx_admision?'checked':''} onchange="setQx('${r.id}','qx_admision',this.checked)"/>
+      </td>
+      <td style="text-align:center;vertical-align:middle;">
+        <input type="checkbox" title="Quirófano" ${e.qx_quirofano?'checked':''} onchange="setQx('${r.id}','qx_quirofano',this.checked)"/>
+      </td>
+      <td style="text-align:center;vertical-align:middle;">
+        <input type="checkbox" title="Recuperación" ${e.qx_recuperacion?'checked':''} onchange="setQx('${r.id}','qx_recuperacion',this.checked)"/>
+      </td>
+      <td style="text-align:center;vertical-align:middle;">
+        <input type="checkbox" title="Labor" ${e.qx_labor?'checked':''} onchange="setQx('${r.id}','qx_labor',this.checked)"/>
+      </td>
+      <td style="vertical-align:middle;">
+        <button class="save-row-btn" onclick="saveRow('${r.id}');event.stopPropagation();">💾</button>
       </td>
     </tr>`;
   }).join('');
@@ -1196,6 +1222,7 @@ function hacerCorte(){
   ingresosDelTurno = {};
   egresosDelTurno = {};
   snapshotTurno = [];
+  reciboDelTurno = {};
   document.querySelectorAll('.turno-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('censo-bloqueado-msg').style.display='block';
   renderTablero();
